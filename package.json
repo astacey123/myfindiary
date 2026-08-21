@@ -1,0 +1,10 @@
+{
+  "name": "financial-diary",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Financial Diary — mortgage, retirement, investments, cash and net worth tracker with a £5 paid signup.",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.0",
+    "stripe": "^16.0.0"
+  }
+}
