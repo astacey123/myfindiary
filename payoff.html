@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pay Off Early — Financial Diary</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+<style>
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    background: var(--page);
+    color: var(--text-primary);
+  }
+
+  .fd-root {
+    --page:           #f9f9f7;
+    --surface-1:      #fcfcfb;
+    --surface-2:      #f2f1ee;
+    --text-primary:   #0b0b0b;
+    --text-secondary: #52514e;
+    --text-muted:     #898781;
+    --gridline:       #e1e0d9;
+    --border:         rgba(11,11,11,0.10);
+    --mortgage:       #2a78d6;
+    --retirement:     #eb6834;
+    --investments:    #1baf7a;
+    --cash:           #4a3aa7;
+    --good:           #0ca30c;
+    background: var(--page);
+    min-height: 100vh;
+  }
+
+  .fd-wrap { max-width: 960px; margin: 0 auto; padding: 32px 20px 80px; }
+
+  /* ---------- Nav / brand ---------- */
+  .fd-nav {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 32px;
+  }
+  .fd-brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 18px; }
+  .fd-brand-mark {
+    width: 28px; height: 28px; border-radius: 8px;
+    background: linear-gradient(135deg, var(--mortgage), var(--investments));
+  }
+  .fd-nav-actions { display: flex; align-items: center; gap: 10px; }
+  .fd-back-link {
+    font-size: 13px; font-weight: 600; color: var(--text-secondary); text-decoration: none;
+    padding: 6px 4px;
+  }
+  .fd-back-link:hover { color: var(--text-primary); }
+  .fd-signout {
+    font-size: 13px; color: var(--text-secondary); background: none; border: 1px solid var(--border);
+    border-radius: 8px; padding: 6px 12px; cursor: pointer; font-family: inherit;
+  }
+  .fd-signout:hover { background: var(--surface-2); }
+
+  /* ---------- Buttons ---------- */
+  .fd-btn {
+    font-family: inherit; font-size: 15px; font-weight: 600; cursor: pointer;
+    border: none; border-radius: 8px; padding: 12px 20px;
+  }
+  .fd-btn-secondary {
+    background: var(--surface-1); color: var(--text-primary); border: 1px solid var(--border);
+  }
+  .fd-btn-secondary:hover { background: var(--surface-2); }
+  .fd-btn-small { font-size: 13px; padding: 8px 14px; }
+
+  .fd-page-title { font-size: 22px; margin: 0 0 4px; }
+  .fd-page-sub { font-size: 13.5px; color: var(--text-secondary); margin: 0 0 22px; }
+
+  .fd-loading { padding: 60px 0; text-align: center; color: var(--text-secondary); font-size: 14px; }
+
+  .fd-tool-card {
+    background: var(--surface-1); border: 1px solid var(--border); border-radius: 12px; padding: 26px;
+    margin-bottom: 20px;
+  }
+  .fd-tool-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px 20px; margin-bottom: 20px; }
+  @media (max-width: 560px) { .fd-tool-grid { grid-template-columns: 1fr; } }
+  .fd-field-inline { display: flex; flex-direction: column; gap: 6px; }
+  .fd-field-inline.span2 { grid-column: 1 / -1; }
+  .fd-label { font-size: 13px; font-weight: 600; color: var(--text-secondary); }
+  .fd-input-wrap { position: relative; display: flex; align-items: center; }
+  .fd-prefix, .fd-suffix { position: absolute; color: var(--text-muted); font-size: 14px; pointer-events: none; }
+  .fd-prefix { left: 12px; } .fd-suffix { right: 12px; }
+  .fd-input {
+    font-size: 15px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px;
+    background: var(--surface-2); color: var(--text-primary); font-family: inherit; width: 100%;
+  }
+  .fd-input:focus { outline: 2px solid var(--mortgage); outline-offset: 1px; }
+  .fd-input.has-prefix { padding-left: 26px; } .fd-input.has-suffix { padding-right: 32px; }
+  .fd-range-row { display: flex; align-items: center; gap: 12px; }
+  .fd-range { flex: 1; accent-color: var(--tool-color, var(--mortgage)); }
+  .fd-range-value { min-width: 56px; text-align: right; font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; }
+
+  .fd-divider { height: 1px; background: var(--gridline); margin: 20px 0; }
+
+  .fd-networth-intro { font-size: 13px; color: var(--text-secondary); margin: 0 0 20px; line-height: 1.5; }
+
+  .fd-hero-stat { text-align: left; margin-bottom: 18px; }
+  .fd-hero-stat .lbl { font-size: 13px; color: var(--text-secondary); margin: 0 0 6px; }
+  .fd-hero-stat .val { font-size: 40px; font-weight: 700; margin: 0; color: var(--text-primary); line-height: 1.1; }
+
+  .fd-chart-wrap { margin-top: 22px; position: relative; }
+  .fd-chart-title { font-size: 13px; font-weight: 600; color: var(--text-secondary); margin: 0 0 10px; }
+  svg.fd-svg { width: 100%; height: 200px; display: block; overflow: visible; }
+  .fd-tooltip {
+    position: absolute; pointer-events: none; background: var(--text-primary); color: var(--surface-1);
+    font-size: 12px; padding: 6px 10px; border-radius: 6px; opacity: 0; transform: translate(-50%, -110%);
+    white-space: nowrap; transition: opacity 0.1s ease; z-index: 5;
+  }
+  .fd-tooltip .tt-val { font-weight: 700; }
+  .fd-tooltip .tt-row { display: flex; align-items: center; gap: 6px; margin-top: 2px; }
+  .fd-tooltip .tt-key { width: 9px; height: 2px; border-radius: 1px; flex-shrink: 0; }
+
+  .fd-log-btn-row { display: flex; justify-content: flex-end; align-items: center; gap: 12px; margin-top: 4px; }
+  .fd-log-msg { font-size: 12.5px; color: var(--good); }
+  .fd-log-msg.err { color: #b3261e; }
+
+  .fd-note { font-size: 12px; color: var(--text-muted); line-height: 1.5; margin-top: 14px; }
+  .fd-disclaimer { font-size: 12px; color: var(--text-muted); margin-top: 16px; line-height: 1.5; }
+
+  /* ---------- Pay off early ---------- */
+  .fd-po-options-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 18px 0; }
+  @media (max-width: 700px) { .fd-po-options-grid { grid-template-columns: 1fr; } }
+  .fd-po-option-card { background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; padding: 18px; }
+  .fd-po-option-card h4 { font-size: 14.5px; margin: 0 0 4px; }
+  .fd-po-option-card .fd-sub { font-size: 12px; color: var(--text-secondary); margin: 0 0 14px; }
+  .fd-po-option-stat { margin-bottom: 10px; }
+  .fd-po-option-stat:last-child { margin-bottom: 0; }
+  .fd-po-option-stat .lbl { font-size: 11.5px; color: var(--text-muted); margin: 0 0 2px; }
+  .fd-po-option-stat .val { font-size: 18px; font-weight: 700; margin: 0; }
+  .fd-po-efficiency {
+    font-size: 12.5px; color: var(--text-secondary); background: var(--surface-2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 12px 14px; margin: 4px 0 18px; line-height: 1.5;
+  }
+  .fd-po-legend { display: flex; gap: 16px; flex-wrap: wrap; margin: -2px 0 10px; font-size: 11.5px; color: var(--text-secondary); }
+  .fd-po-legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .fd-po-legend i { width: 10px; height: 10px; border-radius: 2px; display: inline-block; font-style: normal; }
+</style>
+</head>
+<body>
+<div class="fd-root">
+<div class="fd-wrap">
+
+  <div class="fd-nav">
+    <div class="fd-brand"><span class="fd-brand-mark"></span> Financial Diary</div>
+    <div class="fd-nav-actions">
+      <a class="fd-back-link" href="index.html">&larr; Back to dashboard</a>
+      <button class="fd-signout" id="fd-signout">Sign out</button>
+    </div>
+  </div>
+
+  <div id="fd-loading" class="fd-loading">Loading…</div>
+
+  <div id="fd-app" style="display:none;">
+    <h1 class="fd-page-title">Pay Off Early</h1>
+    <p class="fd-page-sub">Set a goal to pay your mortgage off early, and this works out the two most direct ways to get there.</p>
+
+    <div id="fd-panel-payoff" style="--tool-color:var(--mortgage);">
+      <div class="fd-tool-card">
+        <p class="fd-networth-intro">Set a goal to pay your mortgage off early, and this works out the two most direct ways to get there — a higher monthly payment, or a lump sum now — and how much interest each actually saves.</p>
+
+        <div class="fd-tool-grid">
+          <div class="fd-field-inline">
+            <label class="fd-label">Mortgage amount</label>
+            <div class="fd-input-wrap"><span class="fd-prefix">£</span>
+              <input type="number" id="po-amount" class="fd-input has-prefix" value="200000" min="0" step="1000"></div>
+          </div>
+          <div class="fd-field-inline">
+            <label class="fd-label">Interest rate</label>
+            <div class="fd-input-wrap"><input type="number" id="po-rate" class="fd-input has-suffix" value="5" min="0" max="20" step="0.01"><span class="fd-suffix">%</span></div>
+          </div>
+          <div class="fd-field-inline span2">
+            <label class="fd-label">Mortgage term</label>
+            <div class="fd-range-row">
+              <input type="range" id="po-term" class="fd-range" min="2" max="40" value="25" step="1">
+              <span class="fd-range-value" id="po-term-value">25 yrs</span>
+            </div>
+          </div>
+          <div class="fd-field-inline span2">
+            <label class="fd-label">Pay off this many years early</label>
+            <div class="fd-range-row">
+              <input type="range" id="po-years-early" class="fd-range" min="1" max="24" value="5" step="1">
+              <span class="fd-range-value" id="po-years-early-value">5 yrs</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="fd-divider"></div>
+
+        <div class="fd-hero-stat">
+          <p class="lbl" id="po-headline-label">To pay off in 20 years instead of 25</p>
+          <p class="val" id="po-headline-value">—</p>
+        </div>
+
+        <div class="fd-po-options-grid">
+          <div class="fd-po-option-card">
+            <h4>Option 1 — pay more each month</h4>
+            <p class="fd-sub">Keep the term the same length, just pay more monthly.</p>
+            <div class="fd-po-option-stat"><p class="lbl">New monthly payment</p><p class="val" id="po1-new-payment">£0</p></div>
+            <div class="fd-po-option-stat"><p class="lbl">That's an extra</p><p class="val" id="po1-extra">£0/mo</p></div>
+            <div class="fd-po-option-stat"><p class="lbl">Interest saved</p><p class="val" id="po1-saved" style="color:var(--good);">£0</p></div>
+          </div>
+          <div class="fd-po-option-card">
+            <h4>Option 2 — pay a lump sum now</h4>
+            <p class="fd-sub">Keep paying what you already pay each month.</p>
+            <div class="fd-po-option-stat"><p class="lbl">Lump sum needed today</p><p class="val" id="po2-lump">£0</p></div>
+            <div class="fd-po-option-stat"><p class="lbl">Monthly payment stays at</p><p class="val" id="po2-payment">£0/mo</p></div>
+            <div class="fd-po-option-stat"><p class="lbl">Interest saved</p><p class="val" id="po2-saved" style="color:var(--good);">£0</p></div>
+          </div>
+        </div>
+
+        <p class="fd-po-efficiency" id="po-efficiency-note"></p>
+
+        <div class="fd-chart-wrap">
+          <p class="fd-chart-title">Outstanding balance over time</p>
+          <div class="fd-po-legend">
+            <span><i style="background:#898781;"></i>Current plan</span>
+            <span><i style="background:var(--mortgage);"></i>Option 1 — higher payment</span>
+            <span><i style="background:var(--good);"></i>Option 2 — lump sum</span>
+          </div>
+          <svg class="fd-svg" id="po-chart"></svg>
+          <div class="fd-tooltip" id="po-tooltip"></div>
+        </div>
+
+        <p class="fd-disclaimer">Assumes a standard capital repayment mortgage at a fixed rate for the whole term. Most UK lenders cap penalty-free overpayments (often around 10% of the balance per year) and may charge an Early Repayment Charge during a fixed-rate deal — check your mortgage terms before overpaying. If your mortgage is interest-only, ask your lender how extra payments would be applied, since it works differently. Not financial advice — consider speaking to a mortgage adviser about your specific deal.</p>
+
+        <div class="fd-log-btn-row">
+          <span class="fd-log-msg" id="po-log-msg"></span>
+          <button class="fd-btn fd-btn-secondary fd-btn-small" id="po-log-btn">Log this to my diary</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<script>
+(function () {
+  const $ = (id) => document.getElementById(id);
+  const gbp0 = new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP', maximumFractionDigits: 0 });
+  function fmt0(v) { return gbp0.format(Math.max(0, isFinite(v) ? v : 0)); }
+
+  const cfg = window.FINANCIAL_DIARY_CONFIG || {};
+  const sb = window.supabase.createClient(cfg.SUPABASE_URL, cfg.SUPABASE_ANON_KEY);
+
+  let currentUser = null;
+
+  async function fetchProfile(userId) {
+    const { data, error } = await sb.from('profiles').select('*').eq('id', userId).single();
+    if (error) {
+      console.error('fetchProfile error:', error);
+      return null;
+    }
+    return data;
+  }
+
+  async function doSignOut() {
+    await sb.auth.signOut();
+    window.location.href = 'index.html';
+  }
+  $('fd-signout').addEventListener('click', doSignOut);
+
+  // ---------------- Shared finance helpers ----------------
+  function mortgageBalanceAt(P, monthlyRate, M, kMonths, termMonths, isInterestOnly) {
+    if (kMonths >= termMonths) return 0;
+    if (isInterestOnly) return P;
+    const k = Math.max(0, kMonths);
+    if (monthlyRate === 0) return Math.max(0, P - M * k);
+    return Math.max(0, P * Math.pow(1 + monthlyRate, k) - M * ((Math.pow(1 + monthlyRate, k) - 1) / monthlyRate));
+  }
+
+  // ---------------- Pay off early (mortgage overpayments) ----------------
+  function stdMonthlyPayment(P, monthlyRate, nMonths) {
+    if (nMonths <= 0) return P;
+    return monthlyRate === 0 ? P / nMonths : P * monthlyRate / (1 - Math.pow(1 + monthlyRate, -nMonths));
+  }
+  function requiredLumpSum(P, monthlyRate, M, nTargetMonths) {
+    const B = monthlyRate === 0 ? M * nTargetMonths : M * (1 - Math.pow(1 + monthlyRate, -nTargetMonths)) / monthlyRate;
+    return Math.max(0, P - B);
+  }
+
+  const PO_LINES = [
+    { key: 'current', color: '#898781', label: 'Current plan' },
+    { key: 'option1', color: 'var(--mortgage)', label: 'Option 1 — higher payment' },
+    { key: 'option2', color: 'var(--good)', label: 'Option 2 — lump sum' },
+  ];
+
+  function drawPayoffChart(svgEl, tooltipEl, series) {
+    const width = svgEl.clientWidth || 600;
+    const height = 200;
+    const padL = 4, padR = 4, padT = 14, padB = 22;
+    svgEl.setAttribute('viewBox', '0 0 ' + width + ' ' + height);
+    svgEl.innerHTML = '';
+    const ns = 'http://www.w3.org/2000/svg';
+
+    const maxV = Math.max(...series.map((p) => p.current), 1);
+    const plotW = width - padL - padR;
+    const plotH = height - padT - padB;
+    function xAt(i) { return padL + (series.length === 1 ? 0 : (i / (series.length - 1)) * plotW); }
+    function yAt(v) { return padT + plotH - (v / maxV) * plotH; }
+
+    const baseline = document.createElementNS(ns, 'line');
+    baseline.setAttribute('x1', padL); baseline.setAttribute('x2', width - padR);
+    baseline.setAttribute('y1', padT + plotH); baseline.setAttribute('y2', padT + plotH);
+    baseline.setAttribute('stroke', '#e1e0d9'); baseline.setAttribute('stroke-width', '1');
+    svgEl.appendChild(baseline);
+
+    PO_LINES.forEach((s) => {
+      let d = 'M ' + xAt(0) + ' ' + yAt(series[0][s.key]);
+      for (let i = 1; i < series.length; i++) d += ' L ' + xAt(i) + ' ' + yAt(series[i][s.key]);
+      const path = document.createElementNS(ns, 'path');
+      path.setAttribute('d', d);
+      path.setAttribute('fill', 'none');
+      path.setAttribute('stroke', s.color);
+      path.setAttribute('stroke-width', s.key === 'current' ? '1.5' : '2');
+      if (s.key === 'current') path.setAttribute('stroke-dasharray', '4 3');
+      path.setAttribute('stroke-linejoin', 'round');
+      path.setAttribute('stroke-linecap', 'round');
+      svgEl.appendChild(path);
+    });
+
+    const crosshair = document.createElementNS(ns, 'line');
+    crosshair.setAttribute('y1', padT); crosshair.setAttribute('y2', padT + plotH);
+    crosshair.setAttribute('stroke', '#898781'); crosshair.setAttribute('stroke-width', '1'); crosshair.setAttribute('opacity', '0');
+    svgEl.appendChild(crosshair);
+
+    const hitArea = document.createElementNS(ns, 'rect');
+    hitArea.setAttribute('x', padL); hitArea.setAttribute('y', 0);
+    hitArea.setAttribute('width', plotW); hitArea.setAttribute('height', height); hitArea.setAttribute('fill', 'transparent');
+    svgEl.appendChild(hitArea);
+
+    function handleMove(evt) {
+      const rect = svgEl.getBoundingClientRect();
+      const scaleX = width / rect.width;
+      const mouseX = (evt.clientX - rect.left) * scaleX;
+      let idx = Math.round(((mouseX - padL) / plotW) * (series.length - 1));
+      idx = Math.max(0, Math.min(series.length - 1, idx));
+      const px = xAt(idx);
+      crosshair.setAttribute('x1', px); crosshair.setAttribute('x2', px); crosshair.setAttribute('opacity', '1');
+      const svgRect = svgEl.getBoundingClientRect();
+      tooltipEl.style.left = ((px / width) * svgRect.width) + 'px';
+      tooltipEl.style.top = '8px';
+      tooltipEl.style.opacity = '1';
+      tooltipEl.innerHTML = '';
+      const header = document.createElement('div');
+      header.textContent = 'Year ' + series[idx].year;
+      tooltipEl.appendChild(header);
+      PO_LINES.forEach((s) => {
+        const row = document.createElement('div');
+        row.className = 'tt-row';
+        const key = document.createElement('span'); key.className = 'tt-key'; key.style.background = s.color;
+        const label = document.createElement('span'); label.textContent = s.label + ': ';
+        const val = document.createElement('span'); val.className = 'tt-val'; val.textContent = fmt0(series[idx][s.key]);
+        row.appendChild(key); row.appendChild(label); row.appendChild(val);
+        tooltipEl.appendChild(row);
+      });
+    }
+    function handleLeave() {
+      crosshair.setAttribute('opacity', '0');
+      tooltipEl.style.opacity = '0';
+    }
+    hitArea.addEventListener('pointermove', handleMove);
+    hitArea.addEventListener('pointerleave', handleLeave);
+  }
+
+  function calcPayoff() {
+    const P = Math.max(0, parseFloat($('po-amount').value) || 0);
+    const ratePct = Math.max(0, parseFloat($('po-rate').value) || 0);
+    const termYears = parseInt($('po-term').value, 10) || 2;
+    $('po-years-early').max = Math.max(1, termYears - 1);
+    let yearsEarly = parseInt($('po-years-early').value, 10) || 1;
+    if (yearsEarly > termYears - 1) yearsEarly = termYears - 1;
+    if (yearsEarly < 1) yearsEarly = 1;
+    $('po-years-early').value = yearsEarly;
+
+    $('po-term-value').textContent = termYears + (termYears === 1 ? ' yr' : ' yrs');
+    $('po-years-early-value').textContent = yearsEarly + (yearsEarly === 1 ? ' yr' : ' yrs');
+
+    const monthlyRate = ratePct / 100 / 12;
+    const nOrig = termYears * 12;
+    const targetYears = termYears - yearsEarly;
+    const nTarget = targetYears * 12;
+
+    const M = stdMonthlyPayment(P, monthlyRate, nOrig);
+    const Mprime = stdMonthlyPayment(P, monthlyRate, nTarget);
+    const L = requiredLumpSum(P, monthlyRate, M, nTarget);
+
+    const origInterest = M * nOrig - P;
+    const opt1Interest = Mprime * nTarget - P;
+    const opt1ExtraPerMonth = Mprime - M;
+    const opt1TotalExtra = opt1ExtraPerMonth * nTarget;
+    const opt1Saved = Math.max(0, origInterest - opt1Interest);
+
+    const opt2Interest = (L + M * nTarget) - P;
+    const opt2Saved = Math.max(0, origInterest - opt2Interest);
+
+    $('po-headline-label').textContent = 'To pay off in ' + targetYears + ' years instead of ' + termYears;
+    $('po-headline-value').textContent = yearsEarly + (yearsEarly === 1 ? ' year' : ' years') + ' early';
+
+    $('po1-new-payment').textContent = fmt0(Mprime) + '/mo';
+    $('po1-extra').textContent = '+' + fmt0(opt1ExtraPerMonth) + '/mo';
+    $('po1-saved').textContent = fmt0(opt1Saved);
+
+    $('po2-lump').textContent = fmt0(L);
+    $('po2-payment').textContent = fmt0(M) + '/mo';
+    $('po2-saved').textContent = fmt0(opt2Saved);
+
+    let effNote = '';
+    if (L > 0 && opt1TotalExtra > 0) {
+      const eff1 = opt1Saved / opt1TotalExtra;
+      const eff2 = opt2Saved / L;
+      effNote = 'Pound for pound, a lump sum now tends to go further: every extra £1 paid via higher monthly payments saves roughly £' + eff1.toFixed(2) + ' in interest, while every £1 put in as a lump sum today saves roughly £' + eff2.toFixed(2) + '. The lump sum route needs ' + fmt0(L) + ' upfront; the monthly route spreads ' + fmt0(opt1TotalExtra) + ' extra out over ' + targetYears + ' years.';
+    }
+    $('po-efficiency-note').textContent = effNote;
+
+    const series = [];
+    for (let y = 0; y <= termYears; y++) {
+      const k = y * 12;
+      series.push({
+        year: y,
+        current: mortgageBalanceAt(P, monthlyRate, M, k, nOrig, false),
+        option1: mortgageBalanceAt(P, monthlyRate, Mprime, k, nTarget, false),
+        option2: mortgageBalanceAt(P - L, monthlyRate, M, k, nTarget, false),
+      });
+    }
+    drawPayoffChart($('po-chart'), $('po-tooltip'), series);
+
+    return { P, ratePct, termYears, yearsEarly, targetYears, M, Mprime, opt1ExtraPerMonth, opt1Saved, L, opt2Saved };
+  }
+
+  ['po-amount', 'po-rate'].forEach((id) => {
+    $(id).addEventListener('input', calcPayoff);
+    $(id).addEventListener('change', calcPayoff);
+  });
+  ['po-term', 'po-years-early'].forEach((id) => {
+    $(id).addEventListener('input', calcPayoff);
+  });
+
+  // ---------------- Diary logging ----------------
+  async function addDiaryEntry(category, summary) {
+    const msgEl = $('po-log-msg');
+    msgEl.className = 'fd-log-msg';
+    if (!currentUser) return;
+    const { error } = await sb.from('diary_entries').insert({ user_id: currentUser.id, category, summary });
+    if (error) {
+      console.error('addDiaryEntry error:', error);
+      msgEl.classList.add('err');
+      msgEl.textContent = 'Could not save that to your diary: ' + error.message;
+      return;
+    }
+    msgEl.textContent = 'Saved to your diary.';
+    setTimeout(() => { if (msgEl.textContent === 'Saved to your diary.') msgEl.textContent = ''; }, 4000);
+  }
+
+  $('po-log-btn').addEventListener('click', () => {
+    const r = calcPayoff();
+    addDiaryEntry('Pay off early',
+      'Goal: pay off ' + fmt0(r.P) + ' mortgage ' + r.yearsEarly + ' yrs early (in ' + r.targetYears + ' instead of ' + r.termYears + '). Option 1: ' + fmt0(r.Mprime) + '/mo (+' + fmt0(r.opt1ExtraPerMonth) + '/mo), saves ' + fmt0(r.opt1Saved) + ' interest. Option 2: ' + fmt0(r.L) + ' lump sum now, saves ' + fmt0(r.opt2Saved) + ' interest.');
+  });
+
+  window.addEventListener('resize', () => { if ($('fd-app').style.display !== 'none') calcPayoff(); });
+
+  // ---------------- Auth gate ----------------
+  async function initAuth() {
+    try {
+      const { data: sessionData } = await sb.auth.getSession();
+      if (!sessionData.session) {
+        window.location.href = 'index.html';
+        return;
+      }
+      currentUser = sessionData.session.user;
+      const profile = await fetchProfile(currentUser.id);
+      if (!profile || !profile.has_paid) {
+        window.location.href = 'index.html';
+        return;
+      }
+      $('fd-loading').style.display = 'none';
+      $('fd-app').style.display = 'block';
+      calcPayoff();
+    } catch (err) {
+      console.error('initAuth error:', err);
+      window.location.href = 'index.html';
+    }
+  }
+
+  initAuth();
+})();
+</script>
+</body>
+</html>
