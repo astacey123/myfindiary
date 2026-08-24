@@ -1,0 +1,2925 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Financial Diary — track your mortgage, retirement & investments</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+<style>
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    background: var(--page);
+    color: var(--text-primary);
+  }
+
+  .fd-root {
+    --page:           #f9f9f7;
+    --surface-1:      #fcfcfb;
+    --surface-2:      #f2f1ee;
+    --text-primary:   #0b0b0b;
+    --text-secondary: #52514e;
+    --text-muted:     #898781;
+    --gridline:       #e1e0d9;
+    --baseline:       #c3c2b7;
+    --border:         rgba(11,11,11,0.10);
+    --mortgage:       #2a78d6; /* series slot 1 */
+    --retirement:     #eb6834; /* series slot 2 */
+    --investments:    #1baf7a; /* series slot 3 */
+    --cash:           #4a3aa7; /* series slot 7 (violet) — validated all-pairs safe alongside blue/orange/aqua */
+    --networth:       var(--text-primary); /* Net Worth is a synthesis view, not its own category — neutral ink, not a 5th hue */
+    --good:           #0ca30c;
+    --goals:          #e87ba4; /* series slot 5 (magenta) — its own tab, used standalone per goal card, not compared against the other categoricals at once */
+    --status-critical: #b3261e;
+    --status-good:     #006300;
+    background: var(--page);
+    min-height: 100vh;
+  }
+
+  .fd-wrap { max-width: 960px; margin: 0 auto; padding: 32px 20px 80px; }
+
+  /* ---------- Nav / brand ---------- */
+  .fd-nav {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 32px;
+  }
+  .fd-brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 18px; }
+  .fd-brand-mark {
+    width: 28px; height: 28px; border-radius: 8px;
+    background: linear-gradient(135deg, var(--mortgage), var(--investments));
+  }
+  .fd-nav-actions { display: flex; align-items: center; gap: 10px; }
+  .fd-signout {
+    font-size: 13px; color: var(--text-secondary); background: none; border: 1px solid var(--border);
+    border-radius: 8px; padding: 6px 12px; cursor: pointer; font-family: inherit;
+  }
+  .fd-signout:hover { background: var(--surface-2); }
+  .fd-download-btn {
+    font-size: 13px; font-weight: 600; color: var(--surface-1); background: var(--text-primary);
+    border: none; border-radius: 8px; padding: 7px 14px; cursor: pointer; font-family: inherit;
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .fd-download-btn:hover { opacity: 0.88; }
+  .fd-download-btn:disabled { opacity: 0.5; cursor: wait; }
+  .fd-download-note { font-size: 11.5px; color: var(--text-muted); margin-top: 6px; text-align: right; }
+
+  /* ---------- Buttons ---------- */
+  .fd-btn {
+    font-family: inherit; font-size: 15px; font-weight: 600; cursor: pointer;
+    border: none; border-radius: 8px; padding: 12px 20px;
+  }
+  .fd-btn-primary { background: var(--text-primary); color: var(--surface-1); }
+  .fd-btn-primary:hover { opacity: 0.88; }
+  .fd-btn-secondary {
+    background: var(--surface-1); color: var(--text-primary); border: 1px solid var(--border);
+  }
+  .fd-btn-secondary:hover { background: var(--surface-2); }
+  .fd-btn-small { font-size: 13px; padding: 8px 14px; }
+  .fd-btn-full { width: 100%; }
+
+  /* ---------- Landing ---------- */
+  .fd-hero { text-align: center; padding: 40px 0 48px; }
+  .fd-hero h1 { font-size: 34px; margin: 0 0 12px; letter-spacing: -0.01em; }
+  .fd-hero p { font-size: 16px; color: var(--text-secondary); max-width: 520px; margin: 0 auto 28px; line-height: 1.5; }
+  .fd-price-pill {
+    display: inline-flex; align-items: baseline; gap: 6px; background: var(--surface-1);
+    border: 1px solid var(--border); border-radius: 999px; padding: 8px 18px; margin-bottom: 24px;
+  }
+  .fd-price-pill .amt { font-size: 20px; font-weight: 700; }
+  .fd-price-pill .sub { font-size: 13px; color: var(--text-muted); }
+
+  .fd-feature-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin: 40px 0; }
+  @media (max-width: 860px) { .fd-feature-grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 460px) { .fd-feature-grid { grid-template-columns: 1fr; } }
+  .fd-feature-card {
+    background: var(--surface-1); border: 1px solid var(--border); border-radius: 12px; padding: 22px;
+  }
+  .fd-feature-swatch { width: 34px; height: 34px; border-radius: 8px; margin-bottom: 14px; }
+  .fd-feature-card h3 { font-size: 16px; margin: 0 0 6px; }
+  .fd-feature-card p { font-size: 13.5px; color: var(--text-secondary); line-height: 1.5; margin: 0; }
+
+  .fd-landing-cta { text-align: center; }
+
+  /* ---------- Signup screen ---------- */
+  .fd-auth-card {
+    max-width: 420px; margin: 40px auto; background: var(--surface-1);
+    border: 1px solid var(--border); border-radius: 12px; padding: 32px;
+  }
+  .fd-auth-card h2 { font-size: 20px; margin: 0 0 6px; }
+  .fd-auth-card .fd-sub { font-size: 13.5px; color: var(--text-secondary); margin: 0 0 24px; }
+  .fd-field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
+  .fd-label { font-size: 13px; font-weight: 600; color: var(--text-secondary); }
+  .fd-input {
+    font-size: 15px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px;
+    background: var(--surface-2); color: var(--text-primary); font-family: inherit; width: 100%;
+  }
+  .fd-input:focus { outline: 2px solid var(--mortgage); outline-offset: 1px; }
+  .fd-order-row {
+    display: flex; justify-content: space-between; align-items: center; padding: 12px 0;
+    border-top: 1px solid var(--gridline); margin: 18px 0; font-size: 14px;
+  }
+  .fd-order-row strong { font-size: 18px; }
+  .fd-note { font-size: 12px; color: var(--text-muted); line-height: 1.5; margin-top: 14px; }
+
+  /* ---------- Dashboard ---------- */
+  .fd-summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 28px; }
+  @media (max-width: 860px) { .fd-summary-grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 460px) { .fd-summary-grid { grid-template-columns: 1fr; } }
+  .fd-summary-card {
+    background: var(--surface-1); border: 1px solid var(--border); border-radius: 12px; padding: 18px;
+    border-top: 3px solid var(--card-color, var(--mortgage));
+  }
+  .fd-summary-card .lbl { font-size: 12px; color: var(--text-muted); margin: 0 0 6px; }
+  .fd-summary-card .val { font-size: 24px; font-weight: 700; margin: 0 0 2px; }
+  .fd-summary-card .meta { font-size: 12px; color: var(--text-secondary); margin: 0; }
+
+  /* Quick links to the standalone Pay Off Early / Goal Tracker pages */
+  .fd-quicklinks { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px; }
+  .fd-quicklink {
+    display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600;
+    color: var(--text-primary); background: var(--surface-1); border: 1px solid var(--border);
+    border-radius: 8px; padding: 9px 14px; text-decoration: none;
+  }
+  .fd-quicklink:hover { background: var(--surface-2); }
+  .fd-quicklink .dot { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
+
+  /* Tabs */
+  /* The row scrolls sideways rather than forcing the whole page wide on a phone. */
+  .fd-tabs {
+    display: flex; gap: 6px; margin-bottom: 20px; border-bottom: 1px solid var(--gridline);
+    overflow-x: auto; overflow-y: hidden; padding-bottom: 1px;
+    scrollbar-width: none; -ms-overflow-style: none;
+  }
+  .fd-tabs::-webkit-scrollbar { display: none; }
+  .fd-tab {
+    font-family: inherit; font-size: 14px; font-weight: 600; color: var(--text-secondary);
+    background: none; border: none; padding: 10px 16px; cursor: pointer; border-bottom: 2px solid transparent;
+    margin-bottom: -1px; flex: 0 0 auto; white-space: nowrap;
+  }
+  .fd-tab.active { color: var(--text-primary); border-bottom-color: var(--tab-color, var(--mortgage)); }
+  .fd-tab:hover { color: var(--text-primary); }
+
+  .fd-panel { display: none; }
+  .fd-panel.active { display: block; }
+
+  .fd-tool-card {
+    background: var(--surface-1); border: 1px solid var(--border); border-radius: 12px; padding: 26px;
+    margin-bottom: 20px;
+  }
+  .fd-tool-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px 20px; margin-bottom: 20px; }
+  @media (max-width: 560px) { .fd-tool-grid { grid-template-columns: 1fr; } }
+  .fd-field-inline { display: flex; flex-direction: column; gap: 6px; }
+  .fd-field-inline.span2 { grid-column: 1 / -1; }
+  .fd-input-wrap { position: relative; display: flex; align-items: center; }
+  .fd-prefix, .fd-suffix { position: absolute; color: var(--text-muted); font-size: 14px; pointer-events: none; }
+  .fd-prefix { left: 12px; } .fd-suffix { right: 12px; }
+  .fd-input.has-prefix { padding-left: 26px; } .fd-input.has-suffix { padding-right: 32px; }
+  .fd-select { font-size: 15px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface-2); color: var(--text-primary); font-family: inherit; width: 100%; }
+  .fd-range-row { display: flex; align-items: center; gap: 12px; }
+  .fd-range { flex: 1; accent-color: var(--tool-color, var(--mortgage)); }
+  .fd-range-value { min-width: 56px; text-align: right; font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; }
+
+  .fd-divider { height: 1px; background: var(--gridline); margin: 20px 0; }
+
+  .fd-results { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 18px; }
+  @media (max-width: 560px) { .fd-results { grid-template-columns: 1fr; } }
+  .fd-results-4 { grid-template-columns: repeat(4, 1fr); }
+  @media (max-width: 640px) { .fd-results-4 { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 360px) { .fd-results-4 { grid-template-columns: 1fr; } }
+  .fd-stat { background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; }
+  .fd-stat .lbl { font-size: 12px; color: var(--text-muted); margin: 0 0 4px; }
+  .fd-stat .val { font-size: 22px; font-weight: 700; margin: 0; }
+  .fd-stat .val.accent { color: var(--tool-color, var(--mortgage)); }
+
+  .fd-bar { display: flex; width: 100%; height: 12px; border-radius: 6px; overflow: hidden; background: var(--gridline); }
+  .fd-bar-seg { height: 100%; }
+  .fd-legend { display: flex; gap: 18px; margin-top: 10px; font-size: 12.5px; color: var(--text-secondary); }
+  .fd-legend-item { display: flex; align-items: center; gap: 6px; }
+  .fd-legend-swatch { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
+  .fd-bar-label-row { display: flex; justify-content: space-between; font-size: 12px; color: var(--text-secondary); margin-bottom: 6px; }
+
+  .fd-chart-wrap { margin-top: 22px; position: relative; }
+  .fd-chart-title { font-size: 13px; font-weight: 600; color: var(--text-secondary); margin: 0 0 10px; }
+  svg.fd-svg { width: 100%; height: 200px; display: block; overflow: visible; }
+  .fd-tooltip {
+    position: absolute; pointer-events: none; background: var(--text-primary); color: var(--surface-1);
+    font-size: 12px; padding: 6px 10px; border-radius: 6px; opacity: 0; transform: translate(-50%, -110%);
+    white-space: nowrap; transition: opacity 0.1s ease; z-index: 5;
+  }
+  .fd-tooltip .tt-val { font-weight: 700; }
+  .fd-tooltip .tt-row { display: flex; align-items: center; gap: 6px; margin-top: 2px; }
+  .fd-tooltip .tt-key { width: 9px; height: 2px; border-radius: 1px; flex-shrink: 0; }
+  .fd-tooltip .tt-total { margin-top: 4px; padding-top: 4px; border-top: 1px solid rgba(255,255,255,0.2); font-weight: 700; }
+
+  .fd-log-btn-row { display: flex; justify-content: flex-end; margin-top: 4px; }
+
+  .fd-hero-stat { text-align: left; margin-bottom: 18px; }
+  .fd-hero-stat .lbl { font-size: 13px; color: var(--text-secondary); margin: 0 0 6px; }
+  .fd-hero-stat .val { font-size: 40px; font-weight: 700; margin: 0; color: var(--text-primary); line-height: 1.1; }
+  .fd-networth-intro { font-size: 13px; color: var(--text-secondary); margin: 0 0 20px; line-height: 1.5; }
+  .fd-stat .lbl-swatch { display: flex; align-items: center; gap: 6px; }
+  .fd-stat .lbl-dot { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
+  .fd-age-labels { display: flex; justify-content: space-between; font-size: 11.5px; color: var(--text-muted); margin-top: 4px; }
+
+  /* ---------- Goal planner ---------- */
+  .fd-alloc-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 10px; }
+  @media (max-width: 640px) { .fd-alloc-grid { grid-template-columns: repeat(2, 1fr); } }
+  .fd-alloc-field { display: flex; flex-direction: column; gap: 6px; }
+  .fd-alloc-field .fd-label { display: flex; align-items: center; gap: 6px; }
+  .fd-preset-row { display: flex; justify-content: flex-end; margin: -4px 0 16px; }
+  .fd-preset-btn {
+    font-family: inherit; font-size: 12px; color: var(--text-secondary); background: var(--surface-2);
+    border: 1px solid var(--border); border-radius: 999px; padding: 5px 12px; cursor: pointer;
+  }
+  .fd-preset-btn:hover { background: var(--surface-1); }
+  .fd-alloc-warning {
+    font-size: 12.5px; color: #a15c00; background: #fff4e0; border: 1px solid #f0d9ae; border-radius: 8px;
+    padding: 8px 12px; margin-bottom: 16px; display: none;
+  }
+  .fd-alloc-warning.show { display: block; }
+  .fd-goal-row {
+    display: grid; grid-template-columns: 22px 1fr auto auto; align-items: center; gap: 10px;
+    padding: 12px 0; border-bottom: 1px solid var(--gridline);
+  }
+  .fd-goal-row:last-child { border-bottom: none; }
+  .fd-goal-dot { width: 12px; height: 12px; border-radius: 3px; }
+  .fd-goal-label { font-size: 14px; font-weight: 600; }
+  .fd-goal-meta { font-size: 12px; color: var(--text-muted); margin-top: 2px; font-weight: 400; }
+  .fd-goal-target { text-align: right; }
+  .fd-goal-target .amt { font-size: 15px; font-weight: 600; }
+  .fd-goal-target .lbl { font-size: 11px; color: var(--text-muted); }
+  .fd-goal-required { text-align: right; min-width: 140px; }
+  .fd-goal-required .amt { font-size: 15px; font-weight: 700; }
+  .fd-goal-required .lbl { font-size: 11px; color: var(--text-muted); }
+  .fd-goal-status { font-size: 11.5px; margin-top: 3px; font-weight: 600; }
+  .fd-goal-status.ontrack { color: var(--status-good); }
+  .fd-goal-status.short { color: var(--status-critical); }
+
+  /* ---------- Tracker ---------- */
+  .fd-tk-running-total { font-size: 13px; color: var(--text-secondary); margin: -6px 0 16px; }
+  .fd-tk-running-total strong { color: var(--text-primary); font-size: 15px; }
+  .fd-tk-msg { font-size: 12.5px; line-height: 1.5; margin: 12px 0 0; display: none; }
+  .fd-tk-msg.show { display: block; }
+  .fd-tk-msg.ok { color: var(--status-good); }
+  .fd-tk-msg.bad { color: var(--status-critical); }
+  .fd-tk-hint { font-size: 12.5px; color: var(--text-muted); margin: 10px 0 0; }
+  .fd-tk-remove {
+    font-size: 12px; color: var(--text-muted); background: none; border: none; cursor: pointer;
+    font-family: inherit; text-decoration: underline; padding: 0;
+  }
+  .fd-tk-remove:hover { color: var(--status-critical); }
+  table.fd-diary-table td.fd-tk-num, table.fd-diary-table th.fd-tk-num { text-align: right; font-variant-numeric: tabular-nums; }
+  .fd-tk-ahead { color: var(--status-good); font-weight: 600; }
+  .fd-tk-behind { color: var(--status-critical); font-weight: 600; }
+  .fd-tk-table-wrap { overflow-x: auto; }
+
+  .fd-diary-card { background: var(--surface-1); border: 1px solid var(--border); border-radius: 12px; padding: 24px; }
+  .fd-diary-card h3 { font-size: 16px; margin: 0 0 4px; }
+  .fd-diary-card .fd-sub { font-size: 13px; color: var(--text-secondary); margin: 0 0 16px; }
+  table.fd-diary-table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  table.fd-diary-table th {
+    text-align: left; font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.03em;
+    color: var(--text-muted); font-weight: 600; padding: 8px 10px; border-bottom: 1px solid var(--gridline);
+  }
+  table.fd-diary-table td { padding: 10px; border-bottom: 1px solid var(--gridline); }
+  table.fd-diary-table tr:last-child td { border-bottom: none; }
+  .fd-diary-empty { font-size: 13.5px; color: var(--text-muted); padding: 20px 0; text-align: center; }
+  .fd-tag {
+    display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600;
+    padding: 3px 9px; border-radius: 999px; background: var(--surface-2);
+  }
+  .fd-tag-dot { width: 7px; height: 7px; border-radius: 50%; }
+
+  .fd-demo-note {
+    font-size: 12px; color: var(--text-muted); background: var(--surface-2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 10px 14px; margin-bottom: 24px; line-height: 1.5;
+  }
+  .fd-disclaimer { font-size: 12px; color: var(--text-muted); margin-top: 16px; line-height: 1.5; }
+</style>
+</head>
+<body>
+<div class="fd-root">
+<div class="fd-wrap">
+
+  <div class="fd-nav">
+    <div class="fd-brand"><span class="fd-brand-mark"></span> Financial Diary</div>
+    <div class="fd-nav-actions" id="fd-nav-actions" style="display:none;">
+      <button class="fd-download-btn" id="fd-download-report">Download report (PDF)</button>
+      <button class="fd-signout" id="fd-signout">Sign out</button>
+    </div>
+  </div>
+
+  <!-- ============ LANDING ============ -->
+  <div id="fd-view-landing">
+    <div class="fd-hero">
+      <div class="fd-price-pill"><span class="amt">£5</span><span class="sub">one-time signup</span></div>
+      <h1>One place to track your mortgage, retirement, investments and cash</h1>
+      <p>Run the numbers, log where you stand today, and watch your progress build up over time — all in a simple diary you keep coming back to.</p>
+      <button class="fd-btn fd-btn-primary" id="fd-go-signup">Sign up for £5 →</button>
+      <p class="fd-note" style="margin-top:14px;">Already got an account? <a href="#" id="fd-go-login" style="color:inherit;">Log in</a></p>
+    </div>
+
+    <div class="fd-feature-grid">
+      <div class="fd-feature-card">
+        <div class="fd-feature-swatch" style="background:var(--mortgage);"></div>
+        <h3>Mortgage</h3>
+        <p>Work out your monthly payment and total cost, for repayment or interest-only deals.</p>
+      </div>
+      <div class="fd-feature-card">
+        <div class="fd-feature-swatch" style="background:var(--retirement);"></div>
+        <h3>Retirement</h3>
+        <p>Project your pension pot and estimated retirement income based on your contributions.</p>
+      </div>
+      <div class="fd-feature-card">
+        <div class="fd-feature-swatch" style="background:var(--investments);"></div>
+        <h3>Investments</h3>
+        <p>See how lump sums and monthly contributions could grow over your chosen timeframe.</p>
+      </div>
+      <div class="fd-feature-card">
+        <div class="fd-feature-swatch" style="background:var(--cash);"></div>
+        <h3>Cash at hand</h3>
+        <p>Keep track of your savings and emergency fund, separate from money that's tied up.</p>
+      </div>
+    </div>
+
+    <div class="fd-landing-cta">
+      <button class="fd-btn fd-btn-primary" id="fd-go-signup-2">Sign up for £5 →</button>
+    </div>
+  </div>
+
+  <!-- ============ SIGNUP ============ -->
+  <div id="fd-view-signup" style="display:none;">
+    <div class="fd-auth-card">
+      <h2>Create your account</h2>
+      <p class="fd-sub">£5 one-time signup gives you full access to all six tools and your ongoing diary.</p>
+
+      <div class="fd-field">
+        <label class="fd-label" for="fd-name">Name</label>
+        <input type="text" id="fd-name" class="fd-input" placeholder="Jane Smith" autocomplete="name">
+      </div>
+      <div class="fd-field">
+        <label class="fd-label" for="fd-email">Email</label>
+        <input type="email" id="fd-email" class="fd-input" placeholder="jane@example.com" autocomplete="email">
+      </div>
+      <div class="fd-field">
+        <label class="fd-label" for="fd-password">Password</label>
+        <input type="password" id="fd-password" class="fd-input" placeholder="At least 6 characters" autocomplete="new-password">
+      </div>
+
+      <div class="fd-order-row">
+        <span>Financial Diary — signup</span>
+        <strong>£5.00</strong>
+      </div>
+
+      <p class="fd-note" id="fd-signup-error" style="display:none; color:#b3261e;"></p>
+
+      <button class="fd-btn fd-btn-primary fd-btn-full" id="fd-complete-signup">Continue to payment (£5) →</button>
+      <p class="fd-note">You'll create your login here, then pay securely on Stripe's own page — we never see or store your card details. Already paid? <a href="#" id="fd-signup-go-login" style="color:inherit;">Log in instead</a>.</p>
+    </div>
+  </div>
+
+  <!-- ============ LOGIN ============ -->
+  <div id="fd-view-login" style="display:none;">
+    <div class="fd-auth-card">
+      <h2>Log in</h2>
+      <p class="fd-sub">Welcome back — pick up your diary where you left off.</p>
+
+      <div class="fd-field">
+        <label class="fd-label" for="fd-login-email">Email</label>
+        <input type="email" id="fd-login-email" class="fd-input" placeholder="jane@example.com" autocomplete="email">
+      </div>
+      <div class="fd-field">
+        <label class="fd-label" for="fd-login-password">Password</label>
+        <input type="password" id="fd-login-password" class="fd-input" placeholder="Your password" autocomplete="current-password">
+      </div>
+
+      <p class="fd-note" id="fd-login-error" style="display:none; color:#b3261e;"></p>
+
+      <button class="fd-btn fd-btn-primary fd-btn-full" id="fd-do-login">Log in</button>
+      <p class="fd-note">New here? <a href="#" id="fd-login-go-signup" style="color:inherit;">Sign up for £5</a>.</p>
+    </div>
+  </div>
+
+  <!-- ============ PAYMENT PENDING ============ -->
+  <div id="fd-view-payment-pending" style="display:none;">
+    <div class="fd-auth-card">
+      <h2 id="fd-pp-title">Almost there</h2>
+      <p class="fd-sub" id="fd-pp-sub">Your account is created — finish the £5 payment to unlock your dashboard.</p>
+      <p class="fd-note" id="fd-pp-status" style="display:none;"></p>
+      <button class="fd-btn fd-btn-primary fd-btn-full" id="fd-pp-pay-btn">Pay £5 now →</button>
+      <div class="fd-nav-actions" style="justify-content:center; margin-top:14px;">
+        <button class="fd-signout" id="fd-pp-signout">Sign out</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ DASHBOARD ============ -->
+  <div id="fd-view-dashboard" style="display:none;">
+
+    <div class="fd-summary-grid">
+      <div class="fd-summary-card" style="--card-color:var(--mortgage);">
+        <p class="lbl">Mortgage — monthly payment</p>
+        <p class="val" id="fd-sum-mortgage">£0</p>
+        <p class="meta" id="fd-sum-mortgage-meta">Not calculated yet</p>
+      </div>
+      <div class="fd-summary-card" style="--card-color:var(--retirement);">
+        <p class="lbl">Retirement — projected pot</p>
+        <p class="val" id="fd-sum-retirement">£0</p>
+        <p class="meta" id="fd-sum-retirement-meta">Not calculated yet</p>
+      </div>
+      <div class="fd-summary-card" style="--card-color:var(--investments);">
+        <p class="lbl">Investments — projected value</p>
+        <p class="val" id="fd-sum-investments">£0</p>
+        <p class="meta" id="fd-sum-investments-meta">Not calculated yet</p>
+      </div>
+      <div class="fd-summary-card" style="--card-color:var(--cash);">
+        <p class="lbl">Cash at hand — projected value</p>
+        <p class="val" id="fd-sum-cash">£0</p>
+        <p class="meta" id="fd-sum-cash-meta">Not calculated yet</p>
+      </div>
+    </div>
+
+    <div class="fd-quicklinks">
+      <a class="fd-quicklink" href="payoff.html"><span class="dot" style="background:var(--mortgage);"></span>Pay Off Early →</a>
+      <a class="fd-quicklink" href="goaltracker.html"><span class="dot" style="background:var(--goals);"></span>Goal Tracker →</a>
+    </div>
+
+    <div class="fd-tabs">
+      <button class="fd-tab active" data-tab="mortgage" style="--tab-color:var(--mortgage);">Mortgage</button>
+      <button class="fd-tab" data-tab="retirement" style="--tab-color:var(--retirement);">Retirement</button>
+      <button class="fd-tab" data-tab="investments" style="--tab-color:var(--investments);">Investments</button>
+      <button class="fd-tab" data-tab="cash" style="--tab-color:var(--cash);">Cash at hand</button>
+      <button class="fd-tab" data-tab="networth" style="--tab-color:var(--networth);">Net Worth</button>
+      <button class="fd-tab" data-tab="goalplanner" style="--tab-color:var(--good);">Goal Planner</button>
+      <button class="fd-tab" data-tab="tracker" style="--tab-color:var(--goals);">Tracker</button>
+    </div>
+
+    <!-- ---------- MORTGAGE PANEL ---------- -->
+    <div class="fd-panel active" id="fd-panel-mortgage" style="--tool-color:var(--mortgage);">
+      <div class="fd-tool-card">
+        <div class="fd-tool-grid">
+          <div class="fd-field-inline">
+            <label class="fd-label">Mortgage amount</label>
+            <div class="fd-input-wrap"><span class="fd-prefix">£</span>
+              <input type="number" id="mg-amount" class="fd-input has-prefix" value="200000" min="0" step="1000"></div>
+          </div>
+          <div class="fd-field-inline">
+            <label class="fd-label">Interest rate</label>
+            <div class="fd-input-wrap"><input type="number" id="mg-rate" class="fd-input has-suffix" value="5" min="0" max="20" step="0.01"><span class="fd-suffix">%</span></div>
+          </div>
+          <div class="fd-field-inline">
+            <label class="fd-label">Mortgage type</label>
+            <select id="mg-type" class="fd-select">
+              <option value="repayment" selected>Repayment</option>
+              <option value="interest-only">Interest only</option>
+            </select>
+          </div>
+          <div class="fd-field-inline">
+            <label class="fd-label">Fees to take out mortgage</label>
+            <div class="fd-input-wrap"><span class="fd-prefix">£</span>
+              <input type="number" id="mg-fees" class="fd-input has-prefix" value="0" min="0" step="10"></div>
+          </div>
+          <div class="fd-field-inline span2">
+            <label class="fd-label">Mortgage term</label>
+            <div class="fd-range-row">
+              <input type="range" id="mg-term" class="fd-range" min="1" max="40" value="25" step="1">
+              <span class="fd-range-value" id="mg-term-value">25 yrs</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="fd-divider"></div>
+
+        <div class="fd-results">
+          <div class="fd-stat"><p class="lbl">Monthly payment</p><p class="val accent" id="mg-monthly">£0</p></div>
+          <div class="fd-stat"><p class="lbl" id="mg-total-label">Total lifetime cost</p><p class="val" id="mg-total">£0</p></div>
+        </div>
+
+        <div class="fd-bar-label-row"><span id="mg-bar-title">Capital vs interest</span><span id="mg-bar-total"></span></div>
+        <div class="fd-bar">
+          <div class="fd-bar-seg" id="mg-seg-principal" style="width:50%;background:var(--mortgage);"></div>
+          <div class="fd-bar-seg" id="mg-seg-interest" style="width:50%;background:var(--retirement);"></div>
+        </div>
+        <div class="fd-legend">
+          <div class="fd-legend-item"><span class="fd-legend-swatch" style="background:var(--mortgage);"></span><span id="mg-legend-principal">Capital: £0</span></div>
+          <div class="fd-legend-item"><span class="fd-legend-swatch" style="background:var(--retirement);"></span><span id="mg-legend-interest">Interest: £0</span></div>
+        </div>
+
+        <p class="fd-disclaimer">General indication only, assumes a fixed rate for the whole term with no overpayments. Not financial advice.</p>
+
+        <div class="fd-log-btn-row"><button class="fd-btn fd-btn-secondary fd-btn-small" id="mg-log-btn">Log this to my diary</button></div>
+      </div>
+    </div>
+
+    <!-- ---------- RETIREMENT PANEL ---------- -->
+    <div class="fd-panel" id="fd-panel-retirement" style="--tool-color:var(--retirement);">
+      <div class="fd-tool-card">
+        <div class="fd-tool-grid">
+          <div class="fd-field-inline">
+            <label class="fd-label">Current pension pot</label>
+            <div class="fd-input-wrap"><span class="fd-prefix">£</span>
+              <input type="number" id="rt-pot" class="fd-input has-prefix" value="20000" min="0" step="500"></div>
+          </div>
+          <div class="fd-field-inline">
+            <label class="fd-label">Monthly contribution</label>
+            <div class="fd-input-wrap"><span class="fd-prefix">£</span>
+              <input type="number" id="rt-contrib" class="fd-input has-prefix" value="300" min="0" step="10"></div>
+          </div>
+          <div class="fd-field-inline">
+            <label class="fd-label">Expected annual growth</label>
+            <div class="fd-input-wrap"><input type="number" id="rt-rate" class="fd-input has-suffix" value="5" min="0" max="15" step="0.1"><span class="fd-suffix">%</span></div>
+          </div>
+          <div class="fd-field-inline">
+            <label class="fd-label">Withdrawal rate at retirement</label>
+            <div class="fd-input-wrap"><input type="number" id="rt-drawdown" class="fd-input has-suffix" value="4" min="1" max="10" step="0.1"><span class="fd-suffix">%</span></div>
+          </div>
+          <div class="fd-field-inline span2">
+            <label class="fd-label">Years until retirement</label>
+            <div class="fd-range-row">
+              <input type="range" id="rt-years" class="fd-range" min="1" max="45" value="30" step="1">
+              <span class="fd-range-value" id="rt-years-value">30 yrs</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="fd-divider"></div>
+
+        <div class="fd-results">
+          <div class="fd-stat"><p class="lbl">Projected pot at retirement</p><p class="val accent" id="rt-pot-out">£0</p></div>
+          <div class="fd-stat"><p class="lbl" id="rt-income-label">Estimated annual income (4% rule)</p><p class="val" id="rt-income-out">£0</p></div>
+        </div>
+
+        <div class="fd-bar-label-row"><span>Contributions vs growth</span><span id="rt-bar-total"></span></div>
+        <div class="fd-bar">
+          <div class="fd-bar-seg" id="rt-seg-contrib" style="width:50%;background:var(--retirement);"></div>
+          <div class="fd-bar-seg" id="rt-seg-growth" style="width:50%;background:var(--investments);"></div>
+        </div>
+        <div class="fd-legend">
+          <div class="fd-legend-item"><span class="fd-legend-swatch" style="background:var(--retirement);"></span><span id="rt-legend-contrib">Contributed: £0</span></div>
+          <div class="fd-legend-item"><span class="fd-legend-swatch" style="background:var(--investments);"></span><span id="rt-legend-growth">Growth: £0</span></div>
+        </div>
+
+        <div class="fd-chart-wrap">
+          <p class="fd-chart-title">Pot value over time</p>
+          <svg class="fd-svg" id="rt-chart"></svg>
+          <div class="fd-tooltip" id="rt-tooltip"><span class="tt-val"></span></div>
+        </div>
+
+        <p class="fd-disclaimer">A simple projection assuming steady contributions and a constant growth rate — real returns vary year to year. Not financial advice; consider speaking to a regulated financial adviser about your pension.</p>
+
+        <div class="fd-log-btn-row"><button class="fd-btn fd-btn-secondary fd-btn-small" id="rt-log-btn">Log this to my diary</button></div>
+      </div>
+    </div>
+
+    <!-- ---------- INVESTMENTS PANEL ---------- -->
+    <div class="fd-panel" id="fd-panel-investments" style="--tool-color:var(--investments);">
+      <div class="fd-tool-card">
+        <div class="fd-tool-grid">
+          <div class="fd-field-inline">
+            <label class="fd-label">Initial lump sum</label>
+            <div class="fd-input-wrap"><span class="fd-prefix">£</span>
+              <input type="number" id="iv-lump" class="fd-input has-prefix" value="5000" min="0" step="500"></div>
+          </div>
+          <div class="fd-field-inline">
+            <label class="fd-label">Monthly contribution</label>
+            <div class="fd-input-wrap"><span class="fd-prefix">£</span>
+              <input type="number" id="iv-contrib" class="fd-input has-prefix" value="200" min="0" step="10"></div>
+          </div>
+          <div class="fd-field-inline">
+            <label class="fd-label">Expected annual return</label>
+            <div class="fd-input-wrap"><input type="number" id="iv-rate" class="fd-input has-suffix" value="6" min="0" max="20" step="0.1"><span class="fd-suffix">%</span></div>
+          </div>
+          <div class="fd-field-inline">
+            <label class="fd-label">Time horizon</label>
+            <div class="fd-range-row">
+              <input type="range" id="iv-years" class="fd-range" min="1" max="40" value="15" step="1">
+              <span class="fd-range-value" id="iv-years-value">15 yrs</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="fd-divider"></div>
+
+        <div class="fd-results">
+          <div class="fd-stat"><p class="lbl">Projected value</p><p class="val accent" id="iv-value-out">£0</p></div>
+          <div class="fd-stat"><p class="lbl">Total growth</p><p class="val" id="iv-growth-out">£0</p></div>
+        </div>
+
+        <div class="fd-bar-label-row"><span>Contributed vs growth</span><span id="iv-bar-total"></span></div>
+        <div class="fd-bar">
+          <div class="fd-bar-seg" id="iv-seg-contrib" style="width:50%;background:var(--investments);"></div>
+          <div class="fd-bar-seg" id="iv-seg-growth" style="width:50%;background:var(--mortgage);"></div>
+        </div>
+        <div class="fd-legend">
+          <div class="fd-legend-item"><span class="fd-legend-swatch" style="background:var(--investments);"></span><span id="iv-legend-contrib">Contributed: £0</span></div>
+          <div class="fd-legend-item"><span class="fd-legend-swatch" style="background:var(--mortgage);"></span><span id="iv-legend-growth">Growth: £0</span></div>
+        </div>
+
+        <div class="fd-chart-wrap">
+          <p class="fd-chart-title">Value over time</p>
+          <svg class="fd-svg" id="iv-chart"></svg>
+          <div class="fd-tooltip" id="iv-tooltip"><span class="tt-val"></span></div>
+        </div>
+
+        <p class="fd-disclaimer">Projections assume a constant rate of return, which real investments don't provide — markets go up and down. Not financial advice.</p>
+
+        <div class="fd-log-btn-row"><button class="fd-btn fd-btn-secondary fd-btn-small" id="iv-log-btn">Log this to my diary</button></div>
+      </div>
+    </div>
+
+    <!-- ---------- CASH AT HAND PANEL ---------- -->
+    <div class="fd-panel" id="fd-panel-cash" style="--tool-color:var(--cash);">
+      <div class="fd-tool-card">
+        <div class="fd-tool-grid">
+          <div class="fd-field-inline">
+            <label class="fd-label">Cash &amp; savings you have today</label>
+            <div class="fd-input-wrap"><span class="fd-prefix">£</span>
+              <input type="number" id="cs-lump" class="fd-input has-prefix" value="8000" min="0" step="100"></div>
+          </div>
+          <div class="fd-field-inline">
+            <label class="fd-label">Monthly amount you save</label>
+            <div class="fd-input-wrap"><span class="fd-prefix">£</span>
+              <input type="number" id="cs-contrib" class="fd-input has-prefix" value="150" min="0" step="10"></div>
+          </div>
+          <div class="fd-field-inline">
+            <label class="fd-label">Interest rate (savings account)</label>
+            <div class="fd-input-wrap"><input type="number" id="cs-rate" class="fd-input has-suffix" value="2" min="0" max="10" step="0.1"><span class="fd-suffix">%</span></div>
+          </div>
+          <div class="fd-field-inline">
+            <label class="fd-label">Time horizon</label>
+            <div class="fd-range-row">
+              <input type="range" id="cs-years" class="fd-range" min="1" max="40" value="10" step="1">
+              <span class="fd-range-value" id="cs-years-value">10 yrs</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="fd-divider"></div>
+
+        <div class="fd-results">
+          <div class="fd-stat"><p class="lbl">Projected value</p><p class="val accent" id="cs-value-out">£0</p></div>
+          <div class="fd-stat"><p class="lbl">Total interest</p><p class="val" id="cs-growth-out">£0</p></div>
+        </div>
+
+        <div class="fd-bar-label-row"><span>Saved vs interest</span><span id="cs-bar-total"></span></div>
+        <div class="fd-bar">
+          <div class="fd-bar-seg" id="cs-seg-contrib" style="width:50%;background:var(--cash);"></div>
+          <div class="fd-bar-seg" id="cs-seg-growth" style="width:50%;background:var(--investments);"></div>
+        </div>
+        <div class="fd-legend">
+          <div class="fd-legend-item"><span class="fd-legend-swatch" style="background:var(--cash);"></span><span id="cs-legend-contrib">Saved: £0</span></div>
+          <div class="fd-legend-item"><span class="fd-legend-swatch" style="background:var(--investments);"></span><span id="cs-legend-growth">Interest: £0</span></div>
+        </div>
+
+        <div class="fd-chart-wrap">
+          <p class="fd-chart-title">Cash balance over time</p>
+          <svg class="fd-svg" id="cs-chart"></svg>
+          <div class="fd-tooltip" id="cs-tooltip"><span class="tt-val"></span></div>
+        </div>
+
+        <p class="fd-disclaimer">This is your accessible cash — current account, savings, and emergency fund — kept apart from your pension and investments since it isn't tied up. Not financial advice.</p>
+
+        <div class="fd-log-btn-row"><button class="fd-btn fd-btn-secondary fd-btn-small" id="cs-log-btn">Log this to my diary</button></div>
+      </div>
+    </div>
+
+    <!-- ---------- NET WORTH PANEL ---------- -->
+    <div class="fd-panel" id="fd-panel-networth" style="--tool-color:var(--networth);">
+      <div class="fd-tool-card">
+        <p class="fd-networth-intro">Pulls the numbers from your Mortgage, Retirement, Investments and Cash at hand tabs and projects how they add up over time as home equity, pension, investments and savings all build up together.</p>
+
+        <div class="fd-tool-grid">
+          <div class="fd-field-inline">
+            <label class="fd-label">Your current age</label>
+            <div class="fd-input-wrap">
+              <input type="number" id="nw-age" class="fd-input" value="35" min="16" max="90" step="1"></div>
+          </div>
+          <div class="fd-field-inline">
+            <label class="fd-label">Current property value</label>
+            <div class="fd-input-wrap"><span class="fd-prefix">£</span>
+              <input type="number" id="nw-property" class="fd-input has-prefix" value="260000" min="0" step="1000"></div>
+          </div>
+          <div class="fd-field-inline">
+            <label class="fd-label">Expected annual house price growth</label>
+            <div class="fd-input-wrap"><input type="number" id="nw-house-growth" class="fd-input has-suffix" value="2" min="0" max="10" step="0.1"><span class="fd-suffix">%</span></div>
+          </div>
+          <div class="fd-field-inline">
+            <label class="fd-label">Project forward</label>
+            <div class="fd-range-row">
+              <input type="range" id="nw-years" class="fd-range" min="5" max="50" value="30" step="1">
+              <span class="fd-range-value" id="nw-years-value">30 yrs</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="fd-divider"></div>
+
+        <div class="fd-hero-stat">
+          <p class="lbl" id="nw-hero-label">Projected net worth at age 65</p>
+          <p class="val" id="nw-hero-value">£0</p>
+        </div>
+
+        <div class="fd-results fd-results-4">
+          <div class="fd-stat">
+            <p class="lbl lbl-swatch"><span class="lbl-dot" style="background:var(--mortgage);"></span>Home equity</p>
+            <p class="val" id="nw-equity-out">£0</p>
+          </div>
+          <div class="fd-stat">
+            <p class="lbl lbl-swatch"><span class="lbl-dot" style="background:var(--retirement);"></span>Retirement</p>
+            <p class="val" id="nw-retirement-out">£0</p>
+          </div>
+          <div class="fd-stat">
+            <p class="lbl lbl-swatch"><span class="lbl-dot" style="background:var(--investments);"></span>Investments</p>
+            <p class="val" id="nw-investments-out">£0</p>
+          </div>
+          <div class="fd-stat">
+            <p class="lbl lbl-swatch"><span class="lbl-dot" style="background:var(--cash);"></span>Cash at hand</p>
+            <p class="val" id="nw-cash-out">£0</p>
+          </div>
+        </div>
+
+        <div class="fd-chart-wrap">
+          <p class="fd-chart-title">Net worth by age</p>
+          <svg class="fd-svg" id="nw-chart"></svg>
+          <div class="fd-age-labels"><span id="nw-age-start"></span><span id="nw-age-end"></span></div>
+          <div class="fd-tooltip" id="nw-tooltip"></div>
+        </div>
+
+        <div class="fd-legend" style="margin-top:16px;">
+          <div class="fd-legend-item"><span class="fd-legend-swatch" style="background:var(--mortgage);"></span><span>Home equity</span></div>
+          <div class="fd-legend-item"><span class="fd-legend-swatch" style="background:var(--retirement);"></span><span>Retirement</span></div>
+          <div class="fd-legend-item"><span class="fd-legend-swatch" style="background:var(--investments);"></span><span>Investments</span></div>
+          <div class="fd-legend-item"><span class="fd-legend-swatch" style="background:var(--cash);"></span><span>Cash at hand</span></div>
+        </div>
+
+        <p class="fd-disclaimer">A simplified accumulator: it assumes your mortgage, retirement, investment and savings contributions carry on as set on the other four tabs for the whole period shown, that your mortgage is repaid in full at the end of its term (or immediately if interest-only), and that pension/investment/savings growth doesn't slow down after you retire. Real net worth moves around far more than this. Not financial advice.</p>
+
+        <div class="fd-log-btn-row"><button class="fd-btn fd-btn-secondary fd-btn-small" id="nw-log-btn">Log this to my diary</button></div>
+      </div>
+    </div>
+
+    <!-- ---------- GOAL PLANNER PANEL ---------- -->
+    <div class="fd-panel" id="fd-panel-goalplanner" style="--tool-color:var(--good);">
+      <div class="fd-tool-card">
+        <p class="fd-networth-intro">Set a target net worth and a split across your four tabs, and this works backwards to tell you roughly how much you'd need saving or investing in each one every month to get there — using your current balances and growth rates from those tabs.</p>
+
+        <div class="fd-tool-grid">
+          <div class="fd-field-inline">
+            <label class="fd-label">Target net worth</label>
+            <div class="fd-input-wrap"><span class="fd-prefix">£</span>
+              <input type="number" id="gp-target-networth" class="fd-input has-prefix" value="2000000" min="0" step="10000"></div>
+          </div>
+          <div class="fd-field-inline">
+            <label class="fd-label">Target age</label>
+            <div class="fd-input-wrap">
+              <input type="number" id="gp-target-age" class="fd-input" value="65" min="16" max="100" step="1"></div>
+          </div>
+        </div>
+        <p class="fd-chart-title" style="margin-top:4px;">Uses your current age from the Net Worth tab (<span id="gp-current-age-echo">35</span>).</p>
+
+        <div class="fd-divider"></div>
+
+        <p class="fd-chart-title">How should that target be split?</p>
+        <div class="fd-alloc-grid">
+          <div class="fd-alloc-field">
+            <label class="fd-label"><span class="lbl-dot" style="display:inline-block;width:8px;height:8px;border-radius:2px;background:var(--mortgage);"></span> House</label>
+            <div class="fd-input-wrap"><input type="number" id="gp-alloc-house" class="fd-input has-suffix" value="30" min="0" max="100" step="1"><span class="fd-suffix">%</span></div>
+          </div>
+          <div class="fd-alloc-field">
+            <label class="fd-label"><span class="lbl-dot" style="display:inline-block;width:8px;height:8px;border-radius:2px;background:var(--retirement);"></span> Retirement</label>
+            <div class="fd-input-wrap"><input type="number" id="gp-alloc-retirement" class="fd-input has-suffix" value="30" min="0" max="100" step="1"><span class="fd-suffix">%</span></div>
+          </div>
+          <div class="fd-alloc-field">
+            <label class="fd-label"><span class="lbl-dot" style="display:inline-block;width:8px;height:8px;border-radius:2px;background:var(--investments);"></span> Investments</label>
+            <div class="fd-input-wrap"><input type="number" id="gp-alloc-investments" class="fd-input has-suffix" value="30" min="0" max="100" step="1"><span class="fd-suffix">%</span></div>
+          </div>
+          <div class="fd-alloc-field">
+            <label class="fd-label"><span class="lbl-dot" style="display:inline-block;width:8px;height:8px;border-radius:2px;background:var(--cash);"></span> Cash</label>
+            <div class="fd-input-wrap"><input type="number" id="gp-alloc-cash" class="fd-input has-suffix" value="10" min="0" max="100" step="1"><span class="fd-suffix">%</span></div>
+          </div>
+        </div>
+        <div class="fd-preset-row">
+          <button class="fd-preset-btn" id="gp-preset-btn">Reset to 30 / 30 / 30 / 10</button>
+        </div>
+        <div class="fd-alloc-warning" id="gp-alloc-warning"></div>
+
+        <div class="fd-divider"></div>
+
+        <div class="fd-hero-stat">
+          <p class="lbl" id="gp-hero-label">To hit £2,000,000 by age 65, here's what each part needs to do</p>
+          <p class="val" id="gp-hero-value">£0/mo total</p>
+        </div>
+
+        <div class="fd-tool-card" style="background:var(--surface-2); padding: 6px 20px; margin-bottom:20px;">
+          <div class="fd-goal-row" id="gp-row-house">
+            <span class="fd-goal-dot" style="background:var(--mortgage);"></span>
+            <div>
+              <div class="fd-goal-label">House</div>
+              <div class="fd-goal-meta" id="gp-house-meta">Starting from £0 today, growing at 0%</div>
+            </div>
+            <div class="fd-goal-target"><div class="amt" id="gp-house-target">£0</div><div class="lbl">target</div></div>
+            <div class="fd-goal-required">
+              <div class="amt" id="gp-house-required">£0/mo</div>
+              <div class="lbl">needed</div>
+              <div class="fd-goal-status" id="gp-house-status"></div>
+            </div>
+          </div>
+          <div class="fd-goal-row" id="gp-row-retirement">
+            <span class="fd-goal-dot" style="background:var(--retirement);"></span>
+            <div>
+              <div class="fd-goal-label">Retirement</div>
+              <div class="fd-goal-meta" id="gp-retirement-meta">Starting from £0 today, growing at 0%</div>
+            </div>
+            <div class="fd-goal-target"><div class="amt" id="gp-retirement-target">£0</div><div class="lbl">target</div></div>
+            <div class="fd-goal-required">
+              <div class="amt" id="gp-retirement-required">£0/mo</div>
+              <div class="lbl">needed</div>
+              <div class="fd-goal-status" id="gp-retirement-status"></div>
+            </div>
+          </div>
+          <div class="fd-goal-row" id="gp-row-investments">
+            <span class="fd-goal-dot" style="background:var(--investments);"></span>
+            <div>
+              <div class="fd-goal-label">Investments</div>
+              <div class="fd-goal-meta" id="gp-investments-meta">Starting from £0 today, growing at 0%</div>
+            </div>
+            <div class="fd-goal-target"><div class="amt" id="gp-investments-target">£0</div><div class="lbl">target</div></div>
+            <div class="fd-goal-required">
+              <div class="amt" id="gp-investments-required">£0/mo</div>
+              <div class="lbl">needed</div>
+              <div class="fd-goal-status" id="gp-investments-status"></div>
+            </div>
+          </div>
+          <div class="fd-goal-row" id="gp-row-cash">
+            <span class="fd-goal-dot" style="background:var(--cash);"></span>
+            <div>
+              <div class="fd-goal-label">Cash</div>
+              <div class="fd-goal-meta" id="gp-cash-meta">Starting from £0 today, growing at 0%</div>
+            </div>
+            <div class="fd-goal-target"><div class="amt" id="gp-cash-target">£0</div><div class="lbl">target</div></div>
+            <div class="fd-goal-required">
+              <div class="amt" id="gp-cash-required">£0/mo</div>
+              <div class="lbl">needed</div>
+              <div class="fd-goal-status" id="gp-cash-status"></div>
+            </div>
+          </div>
+        </div>
+
+        <p class="fd-chart-title">Your goal's split</p>
+        <div class="fd-bar">
+          <div class="fd-bar-seg" id="gp-seg-house" style="width:30%;background:var(--mortgage);"></div>
+          <div class="fd-bar-seg" id="gp-seg-retirement" style="width:30%;background:var(--retirement);"></div>
+          <div class="fd-bar-seg" id="gp-seg-investments" style="width:30%;background:var(--investments);"></div>
+          <div class="fd-bar-seg" id="gp-seg-cash" style="width:10%;background:var(--cash);"></div>
+        </div>
+
+        <div class="fd-chart-wrap">
+          <p class="fd-chart-title">If you hit these numbers, here's your path to the goal</p>
+          <svg class="fd-svg" id="gp-chart"></svg>
+          <div class="fd-age-labels"><span id="gp-age-start"></span><span id="gp-age-end"></span></div>
+          <div class="fd-tooltip" id="gp-tooltip"></div>
+        </div>
+
+        <p class="fd-disclaimer">A rough, simplified plan: it assumes steady monthly contributions and constant growth rates for the whole period, and treats the "House" figure as an equivalent amount directed toward home equity (for example, via overpayments) rather than modelling your specific mortgage. Real returns and property prices move up and down. Not financial advice — consider speaking to a regulated financial adviser about a real plan.</p>
+
+        <div class="fd-log-btn-row"><button class="fd-btn fd-btn-secondary fd-btn-small" id="gp-log-btn">Log this to my diary</button></div>
+      </div>
+    </div>
+
+    <!-- ---------- TRACKER PANEL ---------- -->
+    <div class="fd-panel" id="fd-panel-tracker" style="--tool-color:var(--goals);">
+      <div class="fd-tool-card">
+        <p class="fd-networth-intro">This is where your plan meets real life. The faint line is the net worth your other tabs estimate for you; below it you can log what you've actually got — every month, every year, whenever suits — and the app plots your real numbers against that estimate so you can see whether you're running ahead of it or behind it. The estimate isn't frozen: it's worked out fresh from your Mortgage, Retirement, Investments, Cash and Net Worth tabs every time you open this tab, so if you change those numbers, the line you're measuring yourself against moves with them.</p>
+
+        <div class="fd-hero-stat">
+          <p class="lbl" id="tk-hero-label">How you're doing against your estimate</p>
+          <p class="val" id="tk-hero-value">Log your first check-in below to start tracking.</p>
+        </div>
+
+        <div class="fd-divider"></div>
+
+        <p class="fd-chart-title">Log a check-in — what have you actually got right now?</p>
+        <div class="fd-tool-grid">
+          <div class="fd-field-inline">
+            <label class="fd-label" for="tk-date">Date of check-in</label>
+            <div class="fd-input-wrap">
+              <input type="date" id="tk-date" class="fd-input"></div>
+          </div>
+          <div class="fd-field-inline">
+            <label class="fd-label" for="tk-property">Property value today</label>
+            <div class="fd-input-wrap"><span class="fd-prefix">£</span>
+              <input type="number" id="tk-property" class="fd-input has-prefix" value="0" min="0" step="1000"></div>
+          </div>
+          <div class="fd-field-inline">
+            <label class="fd-label" for="tk-mortgage">Mortgage still owed</label>
+            <div class="fd-input-wrap"><span class="fd-prefix">£</span>
+              <input type="number" id="tk-mortgage" class="fd-input has-prefix" value="0" min="0" step="1000"></div>
+          </div>
+          <div class="fd-field-inline">
+            <label class="fd-label" for="tk-pension">Pension pot today</label>
+            <div class="fd-input-wrap"><span class="fd-prefix">£</span>
+              <input type="number" id="tk-pension" class="fd-input has-prefix" value="0" min="0" step="500"></div>
+          </div>
+          <div class="fd-field-inline">
+            <label class="fd-label" for="tk-investments">Investments today</label>
+            <div class="fd-input-wrap"><span class="fd-prefix">£</span>
+              <input type="number" id="tk-investments" class="fd-input has-prefix" value="0" min="0" step="500"></div>
+          </div>
+          <div class="fd-field-inline">
+            <label class="fd-label" for="tk-cash">Cash &amp; savings today</label>
+            <div class="fd-input-wrap"><span class="fd-prefix">£</span>
+              <input type="number" id="tk-cash" class="fd-input has-prefix" value="0" min="0" step="100"></div>
+          </div>
+        </div>
+
+        <p class="fd-tk-running-total">That's a net worth of <strong id="tk-form-total">£0</strong> — your property minus what's still owed on it, plus your pension, investments and cash.</p>
+
+        <div class="fd-log-btn-row" style="justify-content:flex-start;">
+          <button class="fd-btn fd-btn-primary fd-btn-small" id="tk-add-btn">Add this check-in</button>
+        </div>
+        <p class="fd-tk-msg" id="tk-msg"></p>
+
+        <div class="fd-chart-wrap">
+          <p class="fd-chart-title">Your actual net worth vs your estimate</p>
+          <svg class="fd-svg" id="tk-chart"></svg>
+          <div class="fd-age-labels"><span id="tk-x-start"></span><span id="tk-x-end"></span></div>
+          <div class="fd-tooltip" id="tk-tooltip"></div>
+        </div>
+
+        <div class="fd-legend" style="margin-top:14px;">
+          <div class="fd-legend-item"><span class="fd-legend-swatch" style="background:var(--text-muted);"></span><span>Estimated</span></div>
+          <div class="fd-legend-item"><span class="fd-legend-swatch" style="background:var(--goals);"></span><span>Your actual</span></div>
+        </div>
+        <p class="fd-tk-hint" id="tk-chart-hint"></p>
+
+        <div class="fd-divider"></div>
+
+        <p class="fd-chart-title">Your check-ins</p>
+        <div id="tk-history-empty" class="fd-diary-empty">No check-ins yet — fill in the boxes above and add your first one.</div>
+        <div class="fd-tk-table-wrap">
+          <table class="fd-diary-table" id="tk-history-table" style="display:none;">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th class="fd-tk-num">Your actual</th>
+                <th class="fd-tk-num">Estimated</th>
+                <th class="fd-tk-num">Difference</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="tk-history-tbody"></tbody>
+          </table>
+        </div>
+
+        <p class="fd-disclaimer">The estimated line is a simplified projection built from the figures on your other tabs, and it assumes those contributions and growth rates carry on unchanged — real life won't be that tidy, so being above or below it is normal and not a verdict on your finances. Your check-ins are only as accurate as the numbers you type in. Not financial advice.</p>
+
+        <div class="fd-log-btn-row"><button class="fd-btn fd-btn-secondary fd-btn-small" id="tk-log-btn">Log this to my diary</button></div>
+      </div>
+    </div>
+
+    <!-- ---------- DIARY LOG ---------- -->
+    <div class="fd-diary-card">
+      <h3>Your diary</h3>
+      <p class="fd-sub">Every entry you log from the tools above shows up here, so you can look back on how your numbers have moved.</p>
+      <div id="fd-diary-empty" class="fd-diary-empty">No entries yet — use "Log this to my diary" on any tool above to save your first snapshot.</div>
+      <table class="fd-diary-table" id="fd-diary-table" style="display:none;">
+        <thead>
+          <tr><th>Date</th><th>Category</th><th>Summary</th></tr>
+        </thead>
+        <tbody id="fd-diary-tbody"></tbody>
+      </table>
+    </div>
+
+  </div>
+
+</div>
+</div>
+
+<script>
+(function () {
+  const $ = (id) => document.getElementById(id);
+  const gbp0 = new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP', maximumFractionDigits: 0 });
+  const gbp2 = new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP', maximumFractionDigits: 2 });
+  function fmt0(v) { return gbp0.format(Math.max(0, isFinite(v) ? v : 0)); }
+
+  // Talk to Supabase using the plain-script global (window.supabase is the *library*,
+  // not a client — createClient() below makes the actual client, kept as `sb` so the
+  // two never get confused).
+  const cfg = window.FINANCIAL_DIARY_CONFIG || {};
+  const sb = window.supabase.createClient(cfg.SUPABASE_URL, cfg.SUPABASE_ANON_KEY);
+
+  const diaryEntries = [];
+  let currentSession = null;
+  let currentUser = null;
+  let currentProfile = null;
+
+  const CATEGORY_COLOR_VAR = {
+    'Mortgage': 'var(--mortgage)',
+    'Retirement': 'var(--retirement)',
+    'Investments': 'var(--investments)',
+    'Cash at hand': 'var(--cash)',
+    'Net Worth': 'var(--networth)',
+    'Goal Planner': 'var(--good)',
+    'Tracker': 'var(--goals)',
+  };
+
+  function todayStr() {
+    const d = new Date();
+    return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+  }
+
+  // Pulls this user's saved entries from Supabase into the local `diaryEntries`
+  // cache and re-renders the table. Call this after login and after every insert.
+  async function loadDiaryFromSupabase() {
+    if (!currentUser) return;
+    const { data, error } = await sb
+      .from('diary_entries')
+      .select('*')
+      .eq('user_id', currentUser.id)
+      .order('created_at', { ascending: false });
+    if (error) {
+      console.error('loadDiaryFromSupabase error:', error);
+      return;
+    }
+    diaryEntries.length = 0;
+    (data || []).forEach((row) => {
+      diaryEntries.push({
+        date: new Date(row.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+        category: row.category,
+        colorVar: CATEGORY_COLOR_VAR[row.category] || 'var(--text-primary)',
+        summary: row.summary,
+      });
+    });
+    renderDiary();
+  }
+
+  // Saves one entry to Supabase, then reloads from the database so the on-screen
+  // list always matches what's actually stored (rather than trusting local state).
+  async function addDiaryEntry(category, colorVar, summary) {
+    if (!currentUser) return;
+    const { error } = await sb.from('diary_entries').insert({ user_id: currentUser.id, category, summary });
+    if (error) {
+      console.error('addDiaryEntry error:', error);
+      alert('Could not save that to your diary: ' + error.message);
+      return;
+    }
+    await loadDiaryFromSupabase();
+  }
+
+  function renderDiary() {
+    const empty = $('fd-diary-empty');
+    const table = $('fd-diary-table');
+    const tbody = $('fd-diary-tbody');
+    if (diaryEntries.length === 0) {
+      empty.style.display = 'block';
+      table.style.display = 'none';
+      return;
+    }
+    empty.style.display = 'none';
+    table.style.display = 'table';
+    tbody.innerHTML = '';
+    diaryEntries.forEach((e) => {
+      const tr = document.createElement('tr');
+
+      const tdDate = document.createElement('td');
+      tdDate.textContent = e.date;
+
+      const tdCat = document.createElement('td');
+      const tag = document.createElement('span');
+      tag.className = 'fd-tag';
+      const dot = document.createElement('span');
+      dot.className = 'fd-tag-dot';
+      dot.style.background = e.colorVar;
+      tag.appendChild(dot);
+      tag.appendChild(document.createTextNode(e.category));
+      tdCat.appendChild(tag);
+
+      const tdSummary = document.createElement('td');
+      tdSummary.textContent = e.summary;
+
+      tr.appendChild(tdDate);
+      tr.appendChild(tdCat);
+      tr.appendChild(tdSummary);
+      tbody.appendChild(tr);
+    });
+  }
+
+  // ---------------- View switching ----------------
+  const FD_VIEWS = ['landing', 'signup', 'login', 'payment-pending', 'dashboard'];
+  function showView(view) {
+    FD_VIEWS.forEach((v) => { $('fd-view-' + v).style.display = v === view ? 'block' : 'none'; });
+    $('fd-nav-actions').style.display = view === 'dashboard' ? 'flex' : 'none';
+    window.scrollTo(0, 0);
+  }
+
+  let accountName = '';
+  let accountEmail = '';
+
+  // ---------------- Auth + payment flow ----------------
+  async function fetchProfile(userId) {
+    const { data, error } = await sb.from('profiles').select('*').eq('id', userId).single();
+    if (error) {
+      console.error('fetchProfile error:', error);
+      return null;
+    }
+    return data;
+  }
+
+  // Calls our /api/create-checkout-session function (needs to be deployed with
+  // Stripe + Supabase env vars set — see SETUP.md) and sends the browser to Stripe.
+  async function startCheckout() {
+    const { data: sessionData } = await sb.auth.getSession();
+    if (!sessionData.session) { showView('login'); return; }
+    try {
+      const res = await fetch('/api/create-checkout-session', {
+        method: 'POST',
+        headers: { Authorization: 'Bearer ' + sessionData.session.access_token },
+      });
+      const body = await res.json();
+      if (!res.ok || !body.url) throw new Error(body.error || 'Could not start checkout.');
+      window.location.href = body.url;
+    } catch (err) {
+      alert('Payment could not be started: ' + err.message + '\n\nMake sure this site is deployed with the /api functions and your Stripe keys configured — see SETUP.md.');
+    }
+  }
+
+  async function routeAfterAuth() {
+    const { data: sessionData } = await sb.auth.getSession();
+    if (!sessionData.session) { showView('landing'); return; }
+    currentSession = sessionData.session;
+    currentUser = currentSession.user;
+    accountEmail = currentUser.email || accountEmail;
+    accountName = (currentUser.user_metadata && currentUser.user_metadata.name) || accountName;
+
+    const profile = await fetchProfile(currentUser.id);
+    currentProfile = profile;
+    if (profile && profile.has_paid) {
+      await loadDiaryFromSupabase();
+      await loadCheckins();
+      showView('dashboard');
+    } else {
+      $('fd-pp-title').textContent = 'Almost there';
+      $('fd-pp-sub').textContent = 'Your account is created — finish the £5 payment to unlock your dashboard.';
+      $('fd-pp-status').style.display = 'none';
+      $('fd-pp-pay-btn').style.display = 'inline-flex';
+      showView('payment-pending');
+    }
+  }
+
+  // Stripe's webhook (which marks the account as paid) runs a moment after the
+  // redirect back to us, so we poll briefly rather than assuming it's done already.
+  async function pollForPaymentThenRoute() {
+    $('fd-pp-title').textContent = 'Confirming your payment…';
+    $('fd-pp-sub').textContent = 'This usually takes just a few seconds.';
+    $('fd-pp-status').style.display = 'block';
+    $('fd-pp-status').textContent = 'Checking…';
+    $('fd-pp-pay-btn').style.display = 'none';
+    showView('payment-pending');
+
+    for (let i = 0; i < 8; i++) {
+      const profile = await fetchProfile(currentUser.id);
+      if (profile && profile.has_paid) {
+        currentProfile = profile;
+        await loadDiaryFromSupabase();
+        await loadCheckins();
+        showView('dashboard');
+        return;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+    }
+    $('fd-pp-title').textContent = 'Still confirming…';
+    $('fd-pp-sub').textContent = "Stripe should have told us this succeeded, but we're still waiting to hear back — this can occasionally take a minute. Try refreshing shortly.";
+    $('fd-pp-status').style.display = 'none';
+  }
+
+  async function handleSignup() {
+    const errorEl = $('fd-signup-error');
+    errorEl.style.display = 'none';
+    errorEl.style.color = '#b3261e';
+    const name = ($('fd-name').value || '').trim();
+    const email = ($('fd-email').value || '').trim();
+    const password = $('fd-password').value || '';
+    if (!name || !email || !password) {
+      errorEl.textContent = 'Please fill in your name, email and password.';
+      errorEl.style.display = 'block';
+      return;
+    }
+    if (password.length < 6) {
+      errorEl.textContent = 'Password must be at least 6 characters.';
+      errorEl.style.display = 'block';
+      return;
+    }
+
+    const btn = $('fd-complete-signup');
+    btn.disabled = true;
+    const originalLabel = btn.textContent;
+    btn.textContent = 'Creating account…';
+    try {
+      const { data, error } = await sb.auth.signUp({ email, password, options: { data: { name } } });
+      if (error) throw error;
+      accountName = name;
+      accountEmail = email;
+
+      if (data.session) {
+        // Email confirmation is off in this Supabase project — we're signed in
+        // immediately, so go straight to payment.
+        currentSession = data.session;
+        currentUser = data.session.user;
+        await startCheckout();
+      } else {
+        errorEl.style.color = '#006300';
+        errorEl.textContent = 'Account created — check your email to confirm it, then log in to pay and get started.';
+        errorEl.style.display = 'block';
+      }
+    } catch (err) {
+      errorEl.style.color = '#b3261e';
+      errorEl.textContent = err.message || 'Something went wrong creating your account.';
+      errorEl.style.display = 'block';
+    } finally {
+      btn.disabled = false;
+      btn.textContent = originalLabel;
+    }
+  }
+
+  async function handleLogin() {
+    const errorEl = $('fd-login-error');
+    errorEl.style.display = 'none';
+    const email = ($('fd-login-email').value || '').trim();
+    const password = $('fd-login-password').value || '';
+    if (!email || !password) {
+      errorEl.textContent = 'Enter your email and password.';
+      errorEl.style.display = 'block';
+      return;
+    }
+
+    const btn = $('fd-do-login');
+    btn.disabled = true;
+    const originalLabel = btn.textContent;
+    btn.textContent = 'Logging in…';
+    try {
+      const { error } = await sb.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+      await routeAfterAuth();
+    } catch (err) {
+      errorEl.textContent = err.message || 'Could not log in.';
+      errorEl.style.display = 'block';
+    } finally {
+      btn.disabled = false;
+      btn.textContent = originalLabel;
+    }
+  }
+
+  async function doSignOut() {
+    await sb.auth.signOut();
+    currentSession = null;
+    currentUser = null;
+    currentProfile = null;
+    diaryEntries.length = 0;
+    checkins.length = 0;
+    renderDiary();
+    calcTracker();
+    showView('landing');
+  }
+
+  $('fd-go-signup').addEventListener('click', () => showView('signup'));
+  $('fd-go-signup-2').addEventListener('click', () => showView('signup'));
+  $('fd-go-login').addEventListener('click', (e) => { e.preventDefault(); showView('login'); });
+  $('fd-signup-go-login').addEventListener('click', (e) => { e.preventDefault(); showView('login'); });
+  $('fd-login-go-signup').addEventListener('click', (e) => { e.preventDefault(); showView('signup'); });
+  $('fd-complete-signup').addEventListener('click', handleSignup);
+  $('fd-do-login').addEventListener('click', handleLogin);
+  $('fd-pp-pay-btn').addEventListener('click', startCheckout);
+  $('fd-signout').addEventListener('click', doSignOut);
+  $('fd-pp-signout').addEventListener('click', doSignOut);
+
+  // On load: work out whether we're returning from Stripe, already logged in, or new.
+  async function initAuth() {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const checkoutResult = params.get('checkout');
+      if (checkoutResult) {
+        window.history.replaceState({}, '', window.location.pathname); // don't re-trigger on refresh
+      }
+
+      const { data: sessionData } = await sb.auth.getSession();
+      if (!sessionData.session) {
+        showView('landing');
+        return;
+      }
+      currentSession = sessionData.session;
+      currentUser = currentSession.user;
+      accountEmail = currentUser.email || accountEmail;
+      accountName = (currentUser.user_metadata && currentUser.user_metadata.name) || accountName;
+
+      if (checkoutResult === 'success') {
+        await pollForPaymentThenRoute();
+      } else {
+        await routeAfterAuth();
+      }
+    } catch (err) {
+      console.error('initAuth error:', err);
+      showView('landing');
+    }
+  }
+
+  document.querySelectorAll('.fd-tab').forEach((tab) => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.fd-tab').forEach((t) => t.classList.remove('active'));
+      document.querySelectorAll('.fd-panel').forEach((p) => p.classList.remove('active'));
+      tab.classList.add('active');
+      $('fd-panel-' + tab.dataset.tab).classList.add('active');
+      // Recalculate the panel just shown, now that it has real width — and Net Worth
+      // always needs a refresh since it depends on the other three tabs' inputs.
+      if (tab.dataset.tab === 'mortgage') calcMortgage();
+      if (tab.dataset.tab === 'retirement') calcRetirement();
+      if (tab.dataset.tab === 'investments') calcInvestments();
+      if (tab.dataset.tab === 'cash') calcCash();
+      if (tab.dataset.tab === 'networth') calcNetWorth();
+      if (tab.dataset.tab === 'goalplanner') calcGoalPlanner();
+      if (tab.dataset.tab === 'tracker') calcTracker();
+    });
+  });
+
+  // ---------------- Line chart helper ----------------
+  function drawLineChart(svgEl, tooltipEl, points, colorVar, valueFormatter, xLabelFn) {
+    const width = svgEl.clientWidth || 600;
+    const height = 200;
+    const padL = 4, padR = 4, padT = 14, padB = 22;
+    svgEl.setAttribute('viewBox', '0 0 ' + width + ' ' + height);
+    svgEl.innerHTML = '';
+
+    const maxV = Math.max(...points.map((p) => p.value), 1);
+    const minV = 0;
+    const plotW = width - padL - padR;
+    const plotH = height - padT - padB;
+
+    function xAt(i) { return padL + (points.length === 1 ? 0 : (i / (points.length - 1)) * plotW); }
+    function yAt(v) { return padT + plotH - ((v - minV) / (maxV - minV || 1)) * plotH; }
+
+    const ns = 'http://www.w3.org/2000/svg';
+
+    // baseline
+    const baseline = document.createElementNS(ns, 'line');
+    baseline.setAttribute('x1', padL); baseline.setAttribute('x2', width - padR);
+    baseline.setAttribute('y1', padT + plotH); baseline.setAttribute('y2', padT + plotH);
+    baseline.setAttribute('stroke', '#e1e0d9'); baseline.setAttribute('stroke-width', '1');
+    svgEl.appendChild(baseline);
+
+    // area fill
+    let areaPath = 'M ' + xAt(0) + ' ' + yAt(points[0].value);
+    points.forEach((p, i) => { areaPath += ' L ' + xAt(i) + ' ' + yAt(p.value); });
+    areaPath += ' L ' + xAt(points.length - 1) + ' ' + (padT + plotH) + ' L ' + xAt(0) + ' ' + (padT + plotH) + ' Z';
+    const area = document.createElementNS(ns, 'path');
+    area.setAttribute('d', areaPath);
+    area.setAttribute('fill', colorVar);
+    area.setAttribute('opacity', '0.10');
+    svgEl.appendChild(area);
+
+    // line
+    let linePath = 'M ' + xAt(0) + ' ' + yAt(points[0].value);
+    points.forEach((p, i) => { if (i > 0) linePath += ' L ' + xAt(i) + ' ' + yAt(p.value); });
+    const line = document.createElementNS(ns, 'path');
+    line.setAttribute('d', linePath);
+    line.setAttribute('fill', 'none');
+    line.setAttribute('stroke', colorVar);
+    line.setAttribute('stroke-width', '2');
+    line.setAttribute('stroke-linejoin', 'round');
+    line.setAttribute('stroke-linecap', 'round');
+    svgEl.appendChild(line);
+
+    // end marker
+    const lastI = points.length - 1;
+    const endDot = document.createElementNS(ns, 'circle');
+    endDot.setAttribute('cx', xAt(lastI)); endDot.setAttribute('cy', yAt(points[lastI].value));
+    endDot.setAttribute('r', '4'); endDot.setAttribute('fill', colorVar);
+    endDot.setAttribute('stroke', '#fcfcfb'); endDot.setAttribute('stroke-width', '2');
+    svgEl.appendChild(endDot);
+
+    // end label
+    const endLabel = document.createElementNS(ns, 'text');
+    endLabel.setAttribute('x', xAt(lastI) - 4);
+    endLabel.setAttribute('y', yAt(points[lastI].value) - 10);
+    endLabel.setAttribute('text-anchor', 'end');
+    endLabel.setAttribute('font-size', '12');
+    endLabel.setAttribute('font-weight', '700');
+    endLabel.setAttribute('fill', '#0b0b0b');
+    endLabel.textContent = valueFormatter(points[lastI].value);
+    svgEl.appendChild(endLabel);
+
+    // crosshair
+    const crosshair = document.createElementNS(ns, 'line');
+    crosshair.setAttribute('y1', padT); crosshair.setAttribute('y2', padT + plotH);
+    crosshair.setAttribute('stroke', '#898781'); crosshair.setAttribute('stroke-width', '1');
+    crosshair.setAttribute('opacity', '0');
+    svgEl.appendChild(crosshair);
+
+    const hoverDot = document.createElementNS(ns, 'circle');
+    hoverDot.setAttribute('r', '4'); hoverDot.setAttribute('fill', colorVar);
+    hoverDot.setAttribute('stroke', '#fcfcfb'); hoverDot.setAttribute('stroke-width', '2');
+    hoverDot.setAttribute('opacity', '0');
+    svgEl.appendChild(hoverDot);
+
+    const hitArea = document.createElementNS(ns, 'rect');
+    hitArea.setAttribute('x', padL); hitArea.setAttribute('y', 0);
+    hitArea.setAttribute('width', plotW); hitArea.setAttribute('height', height);
+    hitArea.setAttribute('fill', 'transparent');
+    svgEl.appendChild(hitArea);
+
+    function handleMove(evt) {
+      const rect = svgEl.getBoundingClientRect();
+      const scaleX = width / rect.width;
+      const mouseX = (evt.clientX - rect.left) * scaleX;
+      let idx = Math.round(((mouseX - padL) / plotW) * (points.length - 1));
+      idx = Math.max(0, Math.min(points.length - 1, idx));
+      const px = xAt(idx), py = yAt(points[idx].value);
+
+      crosshair.setAttribute('x1', px); crosshair.setAttribute('x2', px); crosshair.setAttribute('opacity', '1');
+      hoverDot.setAttribute('cx', px); hoverDot.setAttribute('cy', py); hoverDot.setAttribute('opacity', '1');
+
+      const svgRect = svgEl.getBoundingClientRect();
+      const tooltipX = (px / width) * svgRect.width;
+      const tooltipY = (py / height) * svgRect.height;
+      tooltipEl.style.left = tooltipX + 'px';
+      tooltipEl.style.top = tooltipY + 'px';
+      tooltipEl.style.opacity = '1';
+      tooltipEl.innerHTML = '';
+      const label = document.createElement('div');
+      label.textContent = xLabelFn(idx);
+      const val = document.createElement('span');
+      val.className = 'tt-val';
+      val.textContent = valueFormatter(points[idx].value);
+      tooltipEl.appendChild(label);
+      tooltipEl.appendChild(val);
+    }
+    function handleLeave() {
+      crosshair.setAttribute('opacity', '0');
+      hoverDot.setAttribute('opacity', '0');
+      tooltipEl.style.opacity = '0';
+    }
+    hitArea.addEventListener('pointermove', handleMove);
+    hitArea.addEventListener('pointerleave', handleLeave);
+  }
+
+  // ---------------- Mortgage ----------------
+  function calcMortgage() {
+    const loanBase = Math.max(0, parseFloat($('mg-amount').value) || 0);
+    const annualRatePct = Math.max(0, parseFloat($('mg-rate').value) || 0);
+    const years = parseInt($('mg-term').value, 10) || 1;
+    const fees = Math.max(0, parseFloat($('mg-fees').value) || 0);
+    const isInterestOnly = $('mg-type').value === 'interest-only';
+
+    $('mg-term-value').textContent = years + (years === 1 ? ' yr' : ' yrs');
+
+    const principal = loanBase; // fees paid upfront in this simplified diary view
+    const monthlyRate = annualRatePct / 100 / 12;
+    const n = years * 12;
+
+    let monthlyPayment, totalInterest, totalCost, capitalAmount, capitalLabel;
+    if (isInterestOnly) {
+      monthlyPayment = principal * monthlyRate;
+      totalInterest = monthlyPayment * n;
+      totalCost = totalInterest + principal + fees;
+      capitalAmount = principal;
+      capitalLabel = 'Capital (repaid at end)';
+    } else {
+      monthlyPayment = monthlyRate === 0 ? principal / n : principal * monthlyRate / (1 - Math.pow(1 + monthlyRate, -n));
+      const totalRepaid = monthlyPayment * n;
+      totalInterest = totalRepaid - principal;
+      totalCost = totalRepaid + fees;
+      capitalAmount = principal;
+      capitalLabel = 'Capital repaid';
+    }
+
+    $('mg-monthly').textContent = fmt0(monthlyPayment) + '/mo';
+    $('mg-total-label').textContent = isInterestOnly ? 'Total lifetime cost (incl. fees, interest & capital)' : 'Total lifetime cost (incl. fees & interest)';
+    $('mg-total').textContent = fmt0(totalCost);
+
+    const barBase = capitalAmount + totalInterest;
+    const pPct = barBase > 0 ? (capitalAmount / barBase) * 100 : 50;
+    $('mg-seg-principal').style.width = pPct + '%';
+    $('mg-seg-interest').style.width = (100 - pPct) + '%';
+    $('mg-bar-title').textContent = capitalLabel + ' vs interest';
+    $('mg-bar-total').textContent = fmt0(barBase) + ' total';
+    $('mg-legend-principal').textContent = capitalLabel + ': ' + fmt0(capitalAmount);
+    $('mg-legend-interest').textContent = 'Interest: ' + fmt0(totalInterest);
+
+    $('fd-sum-mortgage').textContent = fmt0(monthlyPayment) + '/mo';
+    $('fd-sum-mortgage-meta').textContent = fmt0(loanBase) + ' over ' + years + ' yrs at ' + annualRatePct + '%';
+
+    return { monthlyPayment, totalCost, years, annualRatePct, loanBase, type: $('mg-type').value };
+  }
+
+  $('mg-log-btn').addEventListener('click', () => {
+    const r = calcMortgage();
+    addDiaryEntry('Mortgage', 'var(--mortgage)',
+      fmt0(r.loanBase) + ' loan, ' + r.years + ' yrs @ ' + r.annualRatePct + '% (' + r.type + ') — ' + fmt0(r.monthlyPayment) + '/mo, total cost ' + fmt0(r.totalCost));
+  });
+
+  ['mg-amount', 'mg-rate', 'mg-type', 'mg-fees'].forEach((id) => {
+    $(id).addEventListener('input', calcMortgage);
+    $(id).addEventListener('change', calcMortgage);
+  });
+  $('mg-term').addEventListener('input', calcMortgage);
+
+  // ---------------- Shared finance helpers ----------------
+  // Future value of a lump sum + regular monthly contributions, compounded monthly.
+  function fvAt(P, monthlyContribution, annualRatePct, years) {
+    const r = annualRatePct / 100 / 12;
+    const n = years * 12;
+    const fvLump = P * Math.pow(1 + r, n);
+    const fvContrib = r === 0 ? monthlyContribution * n : monthlyContribution * ((Math.pow(1 + r, n) - 1) / r);
+    return fvLump + fvContrib;
+  }
+
+  function futureValueSeries(P, monthlyContribution, annualRatePct, years) {
+    const points = [];
+    for (let y = 0; y <= years; y++) {
+      points.push({ year: y, value: fvAt(P, monthlyContribution, annualRatePct, y) });
+    }
+    return points;
+  }
+
+  // Solve for the monthly contribution needed to grow a starting balance P into
+  // `target` after `years` at annualRatePct — the inverse of fvAt(). Can return a
+  // negative number, meaning the starting balance alone is already on track to
+  // beat the target with no further contributions.
+  function requiredMonthlyContribution(target, P, annualRatePct, years) {
+    const r = annualRatePct / 100 / 12;
+    const n = years * 12;
+    if (n <= 0) return 0;
+    const fvLump = P * Math.pow(1 + r, n);
+    const remaining = target - fvLump;
+    if (r === 0) return remaining / n;
+    const annuityFactor = (Math.pow(1 + r, n) - 1) / r;
+    return annuityFactor === 0 ? 0 : remaining / annuityFactor;
+  }
+
+  // Remaining mortgage balance after k months have been paid, given the standard
+  // amortising monthly payment M for a term of termMonths. Returns 0 once the term
+  // is reached (repayment mortgages are paid off; interest-only is assumed repaid
+  // in full at term end from the separate repayment vehicle).
+  function mortgageBalanceAt(P, monthlyRate, M, kMonths, termMonths, isInterestOnly) {
+    if (kMonths >= termMonths) return 0;
+    if (isInterestOnly) return P;
+    const k = Math.max(0, kMonths);
+    if (monthlyRate === 0) return Math.max(0, P - M * k);
+    return Math.max(0, P * Math.pow(1 + monthlyRate, k) - M * ((Math.pow(1 + monthlyRate, k) - 1) / monthlyRate));
+  }
+
+  function calcRetirement() {
+    const pot = Math.max(0, parseFloat($('rt-pot').value) || 0);
+    const contrib = Math.max(0, parseFloat($('rt-contrib').value) || 0);
+    const rate = Math.max(0, parseFloat($('rt-rate').value) || 0);
+    const drawdown = Math.max(0.1, parseFloat($('rt-drawdown').value) || 4);
+    const years = parseInt($('rt-years').value, 10) || 1;
+
+    $('rt-years-value').textContent = years + (years === 1 ? ' yr' : ' yrs');
+
+    const series = futureValueSeries(pot, contrib, rate, years);
+    const finalValue = series[series.length - 1].value;
+    const totalContributed = pot + contrib * years * 12;
+    const totalGrowth = finalValue - totalContributed;
+    const annualIncome = finalValue * (drawdown / 100);
+
+    $('rt-pot-out').textContent = fmt0(finalValue);
+    $('rt-income-label').textContent = 'Estimated annual income (' + drawdown + '% rule)';
+    $('rt-income-out').textContent = fmt0(annualIncome) + '/yr';
+
+    const cPct = finalValue > 0 ? (totalContributed / finalValue) * 100 : 50;
+    $('rt-seg-contrib').style.width = Math.min(100, Math.max(0, cPct)) + '%';
+    $('rt-seg-growth').style.width = Math.max(0, 100 - cPct) + '%';
+    $('rt-bar-total').textContent = fmt0(finalValue) + ' total';
+    $('rt-legend-contrib').textContent = 'Contributed: ' + fmt0(totalContributed);
+    $('rt-legend-growth').textContent = 'Growth: ' + fmt0(Math.max(0, totalGrowth));
+
+    drawLineChart($('rt-chart'), $('rt-tooltip'), series, 'var(--retirement)', fmt0, (i) => 'Year ' + series[i].year);
+
+    $('fd-sum-retirement').textContent = fmt0(finalValue);
+    $('fd-sum-retirement-meta').textContent = 'In ' + years + ' yrs, ' + fmt0(contrib) + '/mo @ ' + rate + '%';
+
+    return { finalValue, years, rate, contrib, pot, annualIncome };
+  }
+
+  $('rt-log-btn').addEventListener('click', () => {
+    const r = calcRetirement();
+    addDiaryEntry('Retirement', 'var(--retirement)',
+      'Pot ' + fmt0(r.pot) + ' + ' + fmt0(r.contrib) + '/mo @ ' + r.rate + '% for ' + r.years + ' yrs → projected ' + fmt0(r.finalValue) + ', est. income ' + fmt0(r.annualIncome) + '/yr');
+  });
+
+  ['rt-pot', 'rt-contrib', 'rt-rate', 'rt-drawdown'].forEach((id) => {
+    $(id).addEventListener('input', calcRetirement);
+    $(id).addEventListener('change', calcRetirement);
+  });
+  $('rt-years').addEventListener('input', calcRetirement);
+
+  // ---------------- Investments ----------------
+  function calcInvestments() {
+    const lump = Math.max(0, parseFloat($('iv-lump').value) || 0);
+    const contrib = Math.max(0, parseFloat($('iv-contrib').value) || 0);
+    const rate = Math.max(0, parseFloat($('iv-rate').value) || 0);
+    const years = parseInt($('iv-years').value, 10) || 1;
+
+    $('iv-years-value').textContent = years + (years === 1 ? ' yr' : ' yrs');
+
+    const series = futureValueSeries(lump, contrib, rate, years);
+    const finalValue = series[series.length - 1].value;
+    const totalContributed = lump + contrib * years * 12;
+    const totalGrowth = finalValue - totalContributed;
+
+    $('iv-value-out').textContent = fmt0(finalValue);
+    $('iv-growth-out').textContent = fmt0(Math.max(0, totalGrowth));
+
+    const cPct = finalValue > 0 ? (totalContributed / finalValue) * 100 : 50;
+    $('iv-seg-contrib').style.width = Math.min(100, Math.max(0, cPct)) + '%';
+    $('iv-seg-growth').style.width = Math.max(0, 100 - cPct) + '%';
+    $('iv-bar-total').textContent = fmt0(finalValue) + ' total';
+    $('iv-legend-contrib').textContent = 'Contributed: ' + fmt0(totalContributed);
+    $('iv-legend-growth').textContent = 'Growth: ' + fmt0(Math.max(0, totalGrowth));
+
+    drawLineChart($('iv-chart'), $('iv-tooltip'), series, 'var(--investments)', fmt0, (i) => 'Year ' + series[i].year);
+
+    $('fd-sum-investments').textContent = fmt0(finalValue);
+    $('fd-sum-investments-meta').textContent = 'In ' + years + ' yrs, ' + fmt0(contrib) + '/mo @ ' + rate + '%';
+
+    return { finalValue, years, rate, contrib, lump };
+  }
+
+  $('iv-log-btn').addEventListener('click', () => {
+    const r = calcInvestments();
+    addDiaryEntry('Investments', 'var(--investments)',
+      fmt0(r.lump) + ' lump sum + ' + fmt0(r.contrib) + '/mo @ ' + r.rate + '% for ' + r.years + ' yrs → projected ' + fmt0(r.finalValue));
+  });
+
+  ['iv-lump', 'iv-contrib', 'iv-rate'].forEach((id) => {
+    $(id).addEventListener('input', calcInvestments);
+    $(id).addEventListener('change', calcInvestments);
+  });
+  $('iv-years').addEventListener('input', calcInvestments);
+
+  // ---------------- Cash at hand ----------------
+  function calcCash() {
+    const lump = Math.max(0, parseFloat($('cs-lump').value) || 0);
+    const contrib = Math.max(0, parseFloat($('cs-contrib').value) || 0);
+    const rate = Math.max(0, parseFloat($('cs-rate').value) || 0);
+    const years = parseInt($('cs-years').value, 10) || 1;
+
+    $('cs-years-value').textContent = years + (years === 1 ? ' yr' : ' yrs');
+
+    const series = futureValueSeries(lump, contrib, rate, years);
+    const finalValue = series[series.length - 1].value;
+    const totalSaved = lump + contrib * years * 12;
+    const totalGrowth = finalValue - totalSaved;
+
+    $('cs-value-out').textContent = fmt0(finalValue);
+    $('cs-growth-out').textContent = fmt0(Math.max(0, totalGrowth));
+
+    const cPct = finalValue > 0 ? (totalSaved / finalValue) * 100 : 50;
+    $('cs-seg-contrib').style.width = Math.min(100, Math.max(0, cPct)) + '%';
+    $('cs-seg-growth').style.width = Math.max(0, 100 - cPct) + '%';
+    $('cs-bar-total').textContent = fmt0(finalValue) + ' total';
+    $('cs-legend-contrib').textContent = 'Saved: ' + fmt0(totalSaved);
+    $('cs-legend-growth').textContent = 'Interest: ' + fmt0(Math.max(0, totalGrowth));
+
+    drawLineChart($('cs-chart'), $('cs-tooltip'), series, 'var(--cash)', fmt0, (i) => 'Year ' + series[i].year);
+
+    $('fd-sum-cash').textContent = fmt0(finalValue);
+    $('fd-sum-cash-meta').textContent = 'In ' + years + ' yrs, ' + fmt0(contrib) + '/mo @ ' + rate + '%';
+
+    return { finalValue, years, rate, contrib, lump };
+  }
+
+  $('cs-log-btn').addEventListener('click', () => {
+    const r = calcCash();
+    addDiaryEntry('Cash at hand', 'var(--cash)',
+      fmt0(r.lump) + ' saved + ' + fmt0(r.contrib) + '/mo @ ' + r.rate + '% for ' + r.years + ' yrs → projected ' + fmt0(r.finalValue));
+  });
+
+  ['cs-lump', 'cs-contrib', 'cs-rate'].forEach((id) => {
+    $(id).addEventListener('input', calcCash);
+    $(id).addEventListener('change', calcCash);
+  });
+  $('cs-years').addEventListener('input', calcCash);
+
+  // ---------------- Net worth accumulator ----------------
+  const NW_BANDS = [
+    { key: 'equity', color: 'var(--mortgage)', label: 'Home equity' },
+    { key: 'retirement', color: 'var(--retirement)', label: 'Retirement' },
+    { key: 'investments', color: 'var(--investments)', label: 'Investments' },
+    { key: 'cash', color: 'var(--cash)', label: 'Cash at hand' }
+  ];
+
+  function drawStackedAreaChart(svgEl, tooltipEl, series) {
+    const width = svgEl.clientWidth || 600;
+    const height = 200;
+    const padL = 4, padR = 4, padT = 22, padB = 8;
+    svgEl.setAttribute('viewBox', '0 0 ' + width + ' ' + height);
+    svgEl.innerHTML = '';
+
+    const maxV = Math.max(...series.map((p) => p.total), 1);
+    const plotW = width - padL - padR;
+    const plotH = height - padT - padB;
+
+    function xAt(i) { return padL + (series.length === 1 ? 0 : (i / (series.length - 1)) * plotW); }
+    function yAt(v) { return padT + plotH - (v / maxV) * plotH; }
+
+    const ns = 'http://www.w3.org/2000/svg';
+
+    const baseline = document.createElementNS(ns, 'line');
+    baseline.setAttribute('x1', padL); baseline.setAttribute('x2', width - padR);
+    baseline.setAttribute('y1', padT + plotH); baseline.setAttribute('y2', padT + plotH);
+    baseline.setAttribute('stroke', '#e1e0d9'); baseline.setAttribute('stroke-width', '1');
+    svgEl.appendChild(baseline);
+
+    // Cumulative stack: bottom (0) -> equity -> +retirement -> +investments (== total)
+    let cumPrev = series.map(() => 0);
+    NW_BANDS.forEach((band, bi) => {
+      const cumNext = series.map((p, i) => cumPrev[i] + p[band.key]);
+
+      let d = 'M ' + xAt(0) + ' ' + yAt(cumNext[0]);
+      for (let i = 1; i < series.length; i++) d += ' L ' + xAt(i) + ' ' + yAt(cumNext[i]);
+      for (let i = series.length - 1; i >= 0; i--) d += ' L ' + xAt(i) + ' ' + yAt(cumPrev[i]);
+      d += ' Z';
+
+      const area = document.createElementNS(ns, 'path');
+      area.setAttribute('d', d);
+      area.setAttribute('fill', band.color);
+      area.setAttribute('opacity', '0.55');
+      svgEl.appendChild(area);
+
+      // Thin surface-color seam between internal bands so each layer stays legible.
+      if (bi < NW_BANDS.length - 1) {
+        let seamD = 'M ' + xAt(0) + ' ' + yAt(cumNext[0]);
+        for (let i = 1; i < series.length; i++) seamD += ' L ' + xAt(i) + ' ' + yAt(cumNext[i]);
+        const seam = document.createElementNS(ns, 'path');
+        seam.setAttribute('d', seamD);
+        seam.setAttribute('fill', 'none');
+        seam.setAttribute('stroke', '#fcfcfb');
+        seam.setAttribute('stroke-width', '2');
+        svgEl.appendChild(seam);
+      }
+
+      cumPrev = cumNext;
+    });
+
+    // Total line along the top of the stack, with an end dot + label (the headline figure).
+    const totalTop = series.map((p) => p.total);
+    let totalD = 'M ' + xAt(0) + ' ' + yAt(totalTop[0]);
+    for (let i = 1; i < series.length; i++) totalD += ' L ' + xAt(i) + ' ' + yAt(totalTop[i]);
+    const totalLine = document.createElementNS(ns, 'path');
+    totalLine.setAttribute('d', totalD);
+    totalLine.setAttribute('fill', 'none');
+    totalLine.setAttribute('stroke', '#0b0b0b');
+    totalLine.setAttribute('stroke-width', '2');
+    totalLine.setAttribute('stroke-linejoin', 'round');
+    totalLine.setAttribute('stroke-linecap', 'round');
+    svgEl.appendChild(totalLine);
+
+    const lastI = series.length - 1;
+    const endDot = document.createElementNS(ns, 'circle');
+    endDot.setAttribute('cx', xAt(lastI)); endDot.setAttribute('cy', yAt(totalTop[lastI]));
+    endDot.setAttribute('r', '4'); endDot.setAttribute('fill', '#0b0b0b');
+    endDot.setAttribute('stroke', '#fcfcfb'); endDot.setAttribute('stroke-width', '2');
+    svgEl.appendChild(endDot);
+
+    const endLabel = document.createElementNS(ns, 'text');
+    endLabel.setAttribute('x', xAt(lastI) - 4);
+    endLabel.setAttribute('y', yAt(totalTop[lastI]) - 10);
+    endLabel.setAttribute('text-anchor', 'end');
+    endLabel.setAttribute('font-size', '12');
+    endLabel.setAttribute('font-weight', '700');
+    endLabel.setAttribute('fill', '#0b0b0b');
+    endLabel.textContent = fmt0(totalTop[lastI]);
+    svgEl.appendChild(endLabel);
+
+    // Crosshair + hover layer, one tooltip listing every band plus the total.
+    const crosshair = document.createElementNS(ns, 'line');
+    crosshair.setAttribute('y1', padT); crosshair.setAttribute('y2', padT + plotH);
+    crosshair.setAttribute('stroke', '#898781'); crosshair.setAttribute('stroke-width', '1');
+    crosshair.setAttribute('opacity', '0');
+    svgEl.appendChild(crosshair);
+
+    const hoverDot = document.createElementNS(ns, 'circle');
+    hoverDot.setAttribute('r', '4'); hoverDot.setAttribute('fill', '#0b0b0b');
+    hoverDot.setAttribute('stroke', '#fcfcfb'); hoverDot.setAttribute('stroke-width', '2');
+    hoverDot.setAttribute('opacity', '0');
+    svgEl.appendChild(hoverDot);
+
+    const hitArea = document.createElementNS(ns, 'rect');
+    hitArea.setAttribute('x', padL); hitArea.setAttribute('y', 0);
+    hitArea.setAttribute('width', plotW); hitArea.setAttribute('height', height);
+    hitArea.setAttribute('fill', 'transparent');
+    svgEl.appendChild(hitArea);
+
+    function handleMove(evt) {
+      const rect = svgEl.getBoundingClientRect();
+      const scaleX = width / rect.width;
+      const mouseX = (evt.clientX - rect.left) * scaleX;
+      let idx = Math.round(((mouseX - padL) / plotW) * (series.length - 1));
+      idx = Math.max(0, Math.min(series.length - 1, idx));
+      const px = xAt(idx), py = yAt(totalTop[idx]);
+
+      crosshair.setAttribute('x1', px); crosshair.setAttribute('x2', px); crosshair.setAttribute('opacity', '1');
+      hoverDot.setAttribute('cx', px); hoverDot.setAttribute('cy', py); hoverDot.setAttribute('opacity', '1');
+
+      const svgRect = svgEl.getBoundingClientRect();
+      tooltipEl.style.left = ((px / width) * svgRect.width) + 'px';
+      tooltipEl.style.top = ((py / height) * svgRect.height) + 'px';
+      tooltipEl.style.opacity = '1';
+      tooltipEl.innerHTML = '';
+
+      const header = document.createElement('div');
+      header.textContent = 'Age ' + series[idx].age;
+      tooltipEl.appendChild(header);
+
+      NW_BANDS.forEach((band) => {
+        const row = document.createElement('div');
+        row.className = 'tt-row';
+        const key = document.createElement('span');
+        key.className = 'tt-key';
+        key.style.background = band.color;
+        const label = document.createElement('span');
+        label.textContent = band.label + ': ';
+        const val = document.createElement('span');
+        val.className = 'tt-val';
+        val.textContent = fmt0(series[idx][band.key]);
+        row.appendChild(key);
+        row.appendChild(label);
+        row.appendChild(val);
+        tooltipEl.appendChild(row);
+      });
+
+      const totalRow = document.createElement('div');
+      totalRow.className = 'tt-total';
+      totalRow.textContent = 'Total: ' + fmt0(series[idx].total);
+      tooltipEl.appendChild(totalRow);
+    }
+    function handleLeave() {
+      crosshair.setAttribute('opacity', '0');
+      hoverDot.setAttribute('opacity', '0');
+      tooltipEl.style.opacity = '0';
+    }
+    hitArea.addEventListener('pointermove', handleMove);
+    hitArea.addEventListener('pointerleave', handleLeave);
+  }
+
+  // Every figure the net worth projection depends on, read live from the four
+  // tool tabs plus the Net Worth tab's own property inputs. Kept in one place so
+  // the Net Worth tab and the Tracker tab can never drift apart.
+  function readNetWorthInputs() {
+    // Pulled straight from the Net Worth tab.
+    const propertyValue0 = Math.max(0, parseFloat($('nw-property').value) || 0);
+    const houseGrowthPct = Math.max(0, parseFloat($('nw-house-growth').value) || 0);
+
+    // Pulled straight from the Mortgage tab.
+    const mgAmount = Math.max(0, parseFloat($('mg-amount').value) || 0);
+    const mgRatePct = Math.max(0, parseFloat($('mg-rate').value) || 0);
+    const mgTermYears = parseInt($('mg-term').value, 10) || 25;
+    const mgIsInterestOnly = $('mg-type').value === 'interest-only';
+    const mgMonthlyRate = mgRatePct / 100 / 12;
+    const mgTermMonths = mgTermYears * 12;
+    const mgMonthlyPayment = mgIsInterestOnly ? 0
+      : (mgMonthlyRate === 0 ? mgAmount / mgTermMonths : mgAmount * mgMonthlyRate / (1 - Math.pow(1 + mgMonthlyRate, -mgTermMonths)));
+
+    // Pulled straight from the Retirement tab.
+    const rtPot = Math.max(0, parseFloat($('rt-pot').value) || 0);
+    const rtContrib = Math.max(0, parseFloat($('rt-contrib').value) || 0);
+    const rtRatePct = Math.max(0, parseFloat($('rt-rate').value) || 0);
+
+    // Pulled straight from the Investments tab.
+    const ivLump = Math.max(0, parseFloat($('iv-lump').value) || 0);
+    const ivContrib = Math.max(0, parseFloat($('iv-contrib').value) || 0);
+    const ivRatePct = Math.max(0, parseFloat($('iv-rate').value) || 0);
+
+    // Pulled straight from the Cash at hand tab.
+    const csLump = Math.max(0, parseFloat($('cs-lump').value) || 0);
+    const csContrib = Math.max(0, parseFloat($('cs-contrib').value) || 0);
+    const csRatePct = Math.max(0, parseFloat($('cs-rate').value) || 0);
+
+    return {
+      propertyValue0, houseGrowthPct,
+      mgAmount, mgMonthlyRate, mgMonthlyPayment, mgTermMonths, mgIsInterestOnly,
+      rtPot, rtContrib, rtRatePct,
+      ivLump, ivContrib, ivRatePct,
+      csLump, csContrib, csRatePct,
+    };
+  }
+
+  // Mortgage balance `kMonths` from today, where kMonths may be negative (the
+  // Tracker plots check-ins that were dated in the past). For kMonths >= 0 this
+  // is exactly mortgageBalanceAt(); for negative kMonths it runs the same
+  // amortisation formula backwards to give the balance as it would have been.
+  function mortgageBalanceAtSigned(P, monthlyRate, M, kMonths, termMonths, isInterestOnly) {
+    if (kMonths >= 0) return mortgageBalanceAt(P, monthlyRate, M, kMonths, termMonths, isInterestOnly);
+    if (isInterestOnly) return P;
+    if (monthlyRate === 0) return P - M * kMonths;
+    return P * Math.pow(1 + monthlyRate, kMonths) - M * ((Math.pow(1 + monthlyRate, kMonths) - 1) / monthlyRate);
+  }
+
+  // The projection itself: net worth `y` years from today, broken into its four
+  // parts. `y` may be fractional (or negative, for back-dated Tracker check-ins).
+  function netWorthAtYear(inp, y) {
+    const kMonths = y * 12;
+    const balance = mortgageBalanceAtSigned(inp.mgAmount, inp.mgMonthlyRate, inp.mgMonthlyPayment, kMonths, inp.mgTermMonths, inp.mgIsInterestOnly);
+    const propertyValue = inp.propertyValue0 * Math.pow(1 + inp.houseGrowthPct / 100, y);
+    const equity = Math.max(0, propertyValue - balance);
+    const retirement = fvAt(inp.rtPot, inp.rtContrib, inp.rtRatePct, y);
+    const investments = fvAt(inp.ivLump, inp.ivContrib, inp.ivRatePct, y);
+    const cash = fvAt(inp.csLump, inp.csContrib, inp.csRatePct, y);
+    return { equity, retirement, investments, cash, total: equity + retirement + investments + cash };
+  }
+
+  // Year-by-year projection from `startAge` for `projectYears` years — the single
+  // source of the net worth math, shared by the Net Worth tab and the Tracker tab.
+  function buildNetWorthSeries(startAge, projectYears) {
+    const inp = readNetWorthInputs();
+    const series = [];
+    for (let y = 0; y <= projectYears; y++) {
+      const p = netWorthAtYear(inp, y);
+      series.push({ age: startAge + y, equity: p.equity, retirement: p.retirement, investments: p.investments, cash: p.cash, total: p.total });
+    }
+    return series;
+  }
+
+  function calcNetWorth() {
+    const age = parseInt($('nw-age').value, 10) || 30;
+    const projectYears = parseInt($('nw-years').value, 10) || 30;
+    $('nw-years-value').textContent = projectYears + (projectYears === 1 ? ' yr' : ' yrs');
+
+    const series = buildNetWorthSeries(age, projectYears);
+
+    const last = series[series.length - 1];
+    $('nw-hero-label').textContent = 'Projected net worth at age ' + last.age;
+    $('nw-hero-value').textContent = fmt0(last.total);
+    $('nw-equity-out').textContent = fmt0(last.equity);
+    $('nw-retirement-out').textContent = fmt0(last.retirement);
+    $('nw-investments-out').textContent = fmt0(last.investments);
+    $('nw-cash-out').textContent = fmt0(last.cash);
+    $('nw-age-start').textContent = 'Age ' + series[0].age;
+    $('nw-age-end').textContent = 'Age ' + last.age;
+
+    drawStackedAreaChart($('nw-chart'), $('nw-tooltip'), series);
+
+    return { totalNetWorth: last.total, targetAge: last.age, equity: last.equity, retirement: last.retirement, investments: last.investments, cash: last.cash, series };
+  }
+
+  $('nw-log-btn').addEventListener('click', () => {
+    const r = calcNetWorth();
+    addDiaryEntry('Net Worth', 'var(--networth)',
+      'Projected net worth at age ' + r.targetAge + ': ' + fmt0(r.totalNetWorth) +
+      ' (equity ' + fmt0(r.equity) + ', retirement ' + fmt0(r.retirement) + ', investments ' + fmt0(r.investments) + ', cash ' + fmt0(r.cash) + ')');
+  });
+
+  ['nw-age', 'nw-property', 'nw-house-growth'].forEach((id) => {
+    $(id).addEventListener('input', calcNetWorth);
+    $(id).addEventListener('change', calcNetWorth);
+  });
+  $('nw-years').addEventListener('input', calcNetWorth);
+
+  // ---------------- Goal planner ----------------
+  function setGoalRow(prefix, label, target, startBalance, ratePct, required, currentMonthly) {
+    $('gp-' + prefix + '-meta').textContent = 'Starting from ' + fmt0(startBalance) + ' today, growing at ' + ratePct + '%';
+    $('gp-' + prefix + '-target').textContent = fmt0(target);
+    const clampedRequired = Math.max(0, required);
+    $('gp-' + prefix + '-required').textContent = fmt0(clampedRequired) + '/mo';
+
+    const statusEl = $('gp-' + prefix + '-status');
+    if (required <= 0) {
+      statusEl.textContent = 'On track from your starting balance alone';
+      statusEl.className = 'fd-goal-status ontrack';
+    } else if (currentMonthly === null) {
+      statusEl.textContent = '';
+      statusEl.className = 'fd-goal-status';
+    } else if (currentMonthly >= required) {
+      statusEl.textContent = 'On track — currently ' + fmt0(currentMonthly) + '/mo';
+      statusEl.className = 'fd-goal-status ontrack';
+    } else {
+      statusEl.textContent = fmt0(required - currentMonthly) + '/mo short of this (currently ' + fmt0(currentMonthly) + '/mo)';
+      statusEl.className = 'fd-goal-status short';
+    }
+  }
+
+  function calcGoalPlanner() {
+    const currentAge = parseInt($('nw-age').value, 10) || 35;
+    $('gp-current-age-echo').textContent = currentAge;
+    const targetAge = parseInt($('gp-target-age').value, 10) || 65;
+    const targetNetWorth = Math.max(0, parseFloat($('gp-target-networth').value) || 0);
+    const years = Math.max(1, targetAge - currentAge);
+
+    const pctHouse = Math.max(0, parseFloat($('gp-alloc-house').value) || 0);
+    const pctRetirement = Math.max(0, parseFloat($('gp-alloc-retirement').value) || 0);
+    const pctInvestments = Math.max(0, parseFloat($('gp-alloc-investments').value) || 0);
+    const pctCash = Math.max(0, parseFloat($('gp-alloc-cash').value) || 0);
+    const pctTotal = pctHouse + pctRetirement + pctInvestments + pctCash;
+
+    const warningEl = $('gp-alloc-warning');
+    if (Math.abs(pctTotal - 100) > 0.5) {
+      warningEl.textContent = 'Your split adds up to ' + pctTotal.toFixed(0) + '%, not 100% — adjust the four percentages so they total 100%.';
+      warningEl.classList.add('show');
+    } else {
+      warningEl.classList.remove('show');
+    }
+
+    $('gp-seg-house').style.width = pctHouse + '%';
+    $('gp-seg-retirement').style.width = pctRetirement + '%';
+    $('gp-seg-investments').style.width = pctInvestments + '%';
+    $('gp-seg-cash').style.width = pctCash + '%';
+
+    // Starting balances & growth rates pulled live from the other tabs.
+    const propertyValue0 = Math.max(0, parseFloat($('nw-property').value) || 0);
+    const mgAmount = Math.max(0, parseFloat($('mg-amount').value) || 0);
+    const houseStart = Math.max(0, propertyValue0 - mgAmount);
+    const houseRate = Math.max(0, parseFloat($('nw-house-growth').value) || 0);
+
+    const rtPot = Math.max(0, parseFloat($('rt-pot').value) || 0);
+    const rtRate = Math.max(0, parseFloat($('rt-rate').value) || 0);
+    const rtContrib = Math.max(0, parseFloat($('rt-contrib').value) || 0);
+
+    const ivLump = Math.max(0, parseFloat($('iv-lump').value) || 0);
+    const ivRate = Math.max(0, parseFloat($('iv-rate').value) || 0);
+    const ivContrib = Math.max(0, parseFloat($('iv-contrib').value) || 0);
+
+    const csLump = Math.max(0, parseFloat($('cs-lump').value) || 0);
+    const csRate = Math.max(0, parseFloat($('cs-rate').value) || 0);
+    const csContrib = Math.max(0, parseFloat($('cs-contrib').value) || 0);
+
+    const houseTarget = (pctHouse / 100) * targetNetWorth;
+    const retirementTarget = (pctRetirement / 100) * targetNetWorth;
+    const investmentsTarget = (pctInvestments / 100) * targetNetWorth;
+    const cashTarget = (pctCash / 100) * targetNetWorth;
+
+    const houseRequired = requiredMonthlyContribution(houseTarget, houseStart, houseRate, years);
+    const retirementRequired = requiredMonthlyContribution(retirementTarget, rtPot, rtRate, years);
+    const investmentsRequired = requiredMonthlyContribution(investmentsTarget, ivLump, ivRate, years);
+    const cashRequired = requiredMonthlyContribution(cashTarget, csLump, csRate, years);
+
+    setGoalRow('house', 'House', houseTarget, houseStart, houseRate, houseRequired, null);
+    setGoalRow('retirement', 'Retirement', retirementTarget, rtPot, rtRate, retirementRequired, rtContrib);
+    setGoalRow('investments', 'Investments', investmentsTarget, ivLump, ivRate, investmentsRequired, ivContrib);
+    setGoalRow('cash', 'Cash', cashTarget, csLump, csRate, cashRequired, csContrib);
+
+    const totalRequired = Math.max(0, houseRequired) + Math.max(0, retirementRequired) + Math.max(0, investmentsRequired) + Math.max(0, cashRequired);
+    $('gp-hero-label').textContent = 'To hit ' + fmt0(targetNetWorth) + ' by age ' + targetAge + ' (in ' + years + ' yrs), here’s what each part needs to do';
+    $('gp-hero-value').textContent = fmt0(totalRequired) + '/mo total';
+
+    // Trajectory chart: what net worth looks like if the required contributions are actually made.
+    const series = [];
+    for (let y = 0; y <= years; y++) {
+      const equity = fvAt(houseStart, Math.max(0, houseRequired), houseRate, y);
+      const retirement = fvAt(rtPot, Math.max(0, retirementRequired), rtRate, y);
+      const investments = fvAt(ivLump, Math.max(0, investmentsRequired), ivRate, y);
+      const cash = fvAt(csLump, Math.max(0, cashRequired), csRate, y);
+      series.push({ age: currentAge + y, equity, retirement, investments, cash, total: equity + retirement + investments + cash });
+    }
+    $('gp-age-start').textContent = 'Age ' + series[0].age;
+    $('gp-age-end').textContent = 'Age ' + series[series.length - 1].age;
+    drawStackedAreaChart($('gp-chart'), $('gp-tooltip'), series);
+
+    return { targetNetWorth, targetAge, years, totalRequired, houseRequired: Math.max(0, houseRequired), retirementRequired: Math.max(0, retirementRequired), investmentsRequired: Math.max(0, investmentsRequired), cashRequired: Math.max(0, cashRequired) };
+  }
+
+  $('gp-log-btn').addEventListener('click', () => {
+    const r = calcGoalPlanner();
+    addDiaryEntry('Goal Planner', 'var(--good)',
+      'Plan for ' + fmt0(r.targetNetWorth) + ' by age ' + r.targetAge + ': needs ~' + fmt0(r.totalRequired) + '/mo total (house ' + fmt0(r.houseRequired) + ', retirement ' + fmt0(r.retirementRequired) + ', investments ' + fmt0(r.investmentsRequired) + ', cash ' + fmt0(r.cashRequired) + ')');
+  });
+
+  $('gp-preset-btn').addEventListener('click', () => {
+    $('gp-alloc-house').value = 30;
+    $('gp-alloc-retirement').value = 30;
+    $('gp-alloc-investments').value = 30;
+    $('gp-alloc-cash').value = 10;
+    calcGoalPlanner();
+  });
+
+  ['gp-target-networth', 'gp-target-age', 'gp-alloc-house', 'gp-alloc-retirement', 'gp-alloc-investments', 'gp-alloc-cash'].forEach((id) => {
+    $(id).addEventListener('input', calcGoalPlanner);
+    $(id).addEventListener('change', calcGoalPlanner);
+  });
+
+  // ---------------- Tracker (estimate vs. real-life check-ins) ----------------
+  // The estimated line is never frozen: every render re-reads the other tabs via
+  // readNetWorthInputs() and re-evaluates netWorthAtYear(), so changing any input
+  // on Mortgage/Retirement/Investments/Cash/Net Worth moves the line you're
+  // measuring yourself against.
+
+  const checkins = [];
+  const MS_PER_YEAR = 365.25 * 24 * 60 * 60 * 1000;
+
+  function todayMidnightMs() {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d.getTime();
+  }
+  function parseDateStr(s) {
+    const parts = String(s || '').split('-');
+    if (parts.length !== 3) return new Date(NaN);
+    return new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+  }
+  function isoDateStr(d) {
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return d.getFullYear() + '-' + m + '-' + day;
+  }
+  // A check-in's position on the shared x-axis: years from today. Negative for
+  // back-dated check-ins, fractional for anything that isn't a whole year away.
+  function yearOffsetOf(dateStr) {
+    return (parseDateStr(dateStr).getTime() - todayMidnightMs()) / MS_PER_YEAR;
+  }
+  function dateAtOffset(t) { return new Date(todayMidnightMs() + t * MS_PER_YEAR); }
+  function fmtFullDate(d) { return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }); }
+  function fmtMonthYear(d) { return d.toLocaleDateString('en-GB', { month: 'short', year: 'numeric' }); }
+
+  function trackerFieldValue(id) { return Math.max(0, parseFloat($(id).value) || 0); }
+
+  // Actual net worth for one check-in: home equity (never negative) + the rest.
+  function checkinTotal(property, mortgage, pension, investments, cash) {
+    return Math.max(0, property - mortgage) + pension + investments + cash;
+  }
+
+  function updateTrackerFormTotal() {
+    $('tk-form-total').textContent = fmt0(checkinTotal(
+      trackerFieldValue('tk-property'), trackerFieldValue('tk-mortgage'), trackerFieldValue('tk-pension'),
+      trackerFieldValue('tk-investments'), trackerFieldValue('tk-cash')
+    ));
+  }
+
+  function showTrackerMsg(text, ok) {
+    const el = $('tk-msg');
+    el.textContent = text;
+    el.className = 'fd-tk-msg show ' + (ok ? 'ok' : 'bad');
+  }
+  function clearTrackerMsg() {
+    $('tk-msg').textContent = '';
+    $('tk-msg').className = 'fd-tk-msg';
+  }
+
+  async function loadCheckins() {
+    if (!currentUser) return;
+    const { data, error } = await sb
+      .from('networth_checkins')
+      .select('*')
+      .eq('user_id', currentUser.id)
+      .order('checkin_date', { ascending: true });
+    if (error) {
+      console.error('loadCheckins error:', error);
+      showTrackerMsg('Could not load your check-ins: ' + error.message, false);
+      return;
+    }
+    checkins.length = 0;
+    (data || []).forEach((row) => checkins.push(row));
+    calcTracker();
+  }
+
+  // Works out the shared x-axis and both series. x is measured in years from
+  // today, so the annual projection and the real-dated check-ins land on one
+  // scale. The window is zoomed to the period the check-ins cover (plus today
+  // and a little forward headroom) rather than the whole projection, so a few
+  // check-ins don't get squashed into a sliver at the left edge.
+  function buildTrackerModel() {
+    const inp = readNetWorthInputs();
+    const age = parseInt($('nw-age').value, 10) || 30;
+    const projectYears = parseInt($('nw-years').value, 10) || 30;
+
+    const actual = checkins
+      .map((c) => ({
+        id: c.id,
+        dateStr: c.checkin_date,
+        t: yearOffsetOf(c.checkin_date),
+        value: Math.max(0, Number(c.actual_total) || 0),
+      }))
+      .filter((p) => isFinite(p.t))
+      .sort((a, b) => a.t - b.t);
+
+    let lo, hi;
+    if (actual.length === 0) {
+      lo = 0;
+      hi = Math.max(1, Math.min(2, projectYears));
+    } else {
+      lo = Math.min(0, actual[0].t);
+      hi = Math.max(0, actual[actual.length - 1].t);
+      if (hi - lo < 0.5) { const mid = (lo + hi) / 2; lo = mid - 0.25; hi = mid + 0.25; }
+      const covered = hi - lo;
+      lo -= covered * 0.08;
+      hi += Math.max(0.25, covered * 0.35);
+    }
+    if (!(hi > lo)) hi = lo + 1;
+
+    // The estimated curve is evaluated directly at each x position rather than
+    // interpolated off the annual points, so it stays exact at fractional years.
+    const SAMPLES = 60;
+    const est = [];
+    for (let i = 0; i <= SAMPLES; i++) {
+      const t = lo + ((hi - lo) * i) / SAMPLES;
+      est.push({ t, value: netWorthAtYear(inp, t).total });
+    }
+
+    return { x0: lo, x1: hi, est, actual, age, inp };
+  }
+
+  function drawTrackerChart(svgEl, tooltipEl, model) {
+    const width = svgEl.clientWidth || 600;
+    const height = 200;
+    const padL = 4, padR = 4, padT = 18, padB = 22;
+    svgEl.setAttribute('viewBox', '0 0 ' + width + ' ' + height);
+    svgEl.innerHTML = '';
+
+    const plotW = width - padL - padR;
+    const plotH = height - padT - padB;
+    const values = model.est.map((p) => p.value).concat(model.actual.map((p) => p.value));
+    values.push(0);
+    const maxV = Math.max(Math.max.apply(null, values) * 1.08, 1);
+    const span = (model.x1 - model.x0) || 1;
+
+    function xAt(t) { return padL + ((t - model.x0) / span) * plotW; }
+    function yAt(v) { return padT + plotH - (Math.max(0, v) / maxV) * plotH; }
+
+    const ns = 'http://www.w3.org/2000/svg';
+
+    const baseline = document.createElementNS(ns, 'line');
+    baseline.setAttribute('x1', padL); baseline.setAttribute('x2', width - padR);
+    baseline.setAttribute('y1', padT + plotH); baseline.setAttribute('y2', padT + plotH);
+    baseline.setAttribute('stroke', '#e1e0d9'); baseline.setAttribute('stroke-width', '1');
+    svgEl.appendChild(baseline);
+
+    // "Today" marker, only when today actually falls inside the zoomed window.
+    if (model.x0 < 0 && model.x1 > 0) {
+      const todayLine = document.createElementNS(ns, 'line');
+      todayLine.setAttribute('x1', xAt(0)); todayLine.setAttribute('x2', xAt(0));
+      todayLine.setAttribute('y1', padT); todayLine.setAttribute('y2', padT + plotH);
+      todayLine.setAttribute('stroke', '#c3c2b7'); todayLine.setAttribute('stroke-width', '1');
+      todayLine.setAttribute('stroke-dasharray', '3 3');
+      svgEl.appendChild(todayLine);
+      const todayText = document.createElementNS(ns, 'text');
+      todayText.setAttribute('x', xAt(0) + 4);
+      todayText.setAttribute('y', padT - 6);
+      todayText.setAttribute('font-size', '10');
+      todayText.setAttribute('fill', '#898781');
+      todayText.textContent = 'today';
+      svgEl.appendChild(todayText);
+    }
+
+    // ---- Estimated series (muted) ----
+    let areaD = 'M ' + xAt(model.est[0].t) + ' ' + yAt(model.est[0].value);
+    model.est.forEach((p) => { areaD += ' L ' + xAt(p.t) + ' ' + yAt(p.value); });
+    areaD += ' L ' + xAt(model.est[model.est.length - 1].t) + ' ' + (padT + plotH) +
+             ' L ' + xAt(model.est[0].t) + ' ' + (padT + plotH) + ' Z';
+    const estArea = document.createElementNS(ns, 'path');
+    estArea.setAttribute('d', areaD);
+    estArea.setAttribute('fill', 'var(--text-muted)');
+    estArea.setAttribute('opacity', '0.10');
+    svgEl.appendChild(estArea);
+
+    let estD = 'M ' + xAt(model.est[0].t) + ' ' + yAt(model.est[0].value);
+    for (let i = 1; i < model.est.length; i++) estD += ' L ' + xAt(model.est[i].t) + ' ' + yAt(model.est[i].value);
+    const estLine = document.createElementNS(ns, 'path');
+    estLine.setAttribute('d', estD);
+    estLine.setAttribute('fill', 'none');
+    estLine.setAttribute('stroke', 'var(--text-muted)');
+    estLine.setAttribute('stroke-width', '2');
+    estLine.setAttribute('stroke-linejoin', 'round');
+    estLine.setAttribute('stroke-linecap', 'round');
+    svgEl.appendChild(estLine);
+
+    const estLast = model.est[model.est.length - 1];
+    const estEndDot = document.createElementNS(ns, 'circle');
+    estEndDot.setAttribute('cx', xAt(estLast.t)); estEndDot.setAttribute('cy', yAt(estLast.value));
+    estEndDot.setAttribute('r', '3.5'); estEndDot.setAttribute('fill', 'var(--text-muted)');
+    estEndDot.setAttribute('stroke', '#fcfcfb'); estEndDot.setAttribute('stroke-width', '2');
+    svgEl.appendChild(estEndDot);
+
+    const estEndLabel = document.createElementNS(ns, 'text');
+    estEndLabel.setAttribute('x', xAt(estLast.t) - 4);
+    estEndLabel.setAttribute('y', yAt(estLast.value) - 10);
+    estEndLabel.setAttribute('text-anchor', 'end');
+    estEndLabel.setAttribute('font-size', '12');
+    estEndLabel.setAttribute('font-weight', '600');
+    estEndLabel.setAttribute('fill', '#898781');
+    estEndLabel.textContent = fmt0(estLast.value);
+    svgEl.appendChild(estEndLabel);
+
+    // ---- Actual series (strong) ----
+    if (model.actual.length >= 2) {
+      let actD = 'M ' + xAt(model.actual[0].t) + ' ' + yAt(model.actual[0].value);
+      for (let i = 1; i < model.actual.length; i++) actD += ' L ' + xAt(model.actual[i].t) + ' ' + yAt(model.actual[i].value);
+      const actLine = document.createElementNS(ns, 'path');
+      actLine.setAttribute('d', actD);
+      actLine.setAttribute('fill', 'none');
+      actLine.setAttribute('stroke', 'var(--goals)');
+      actLine.setAttribute('stroke-width', '2.5');
+      actLine.setAttribute('stroke-linejoin', 'round');
+      actLine.setAttribute('stroke-linecap', 'round');
+      svgEl.appendChild(actLine);
+    }
+
+    model.actual.forEach((p) => {
+      const dot = document.createElementNS(ns, 'circle');
+      dot.setAttribute('class', 'fd-tk-dot');
+      dot.setAttribute('cx', xAt(p.t)); dot.setAttribute('cy', yAt(p.value));
+      dot.setAttribute('r', '4'); dot.setAttribute('fill', 'var(--goals)');
+      dot.setAttribute('stroke', '#fcfcfb'); dot.setAttribute('stroke-width', '2');
+      svgEl.appendChild(dot);
+    });
+
+    if (model.actual.length) {
+      const actLast = model.actual[model.actual.length - 1];
+      const actLabel = document.createElementNS(ns, 'text');
+      actLabel.setAttribute('x', xAt(actLast.t) - 4);
+      actLabel.setAttribute('y', yAt(actLast.value) - 11);
+      actLabel.setAttribute('text-anchor', 'end');
+      actLabel.setAttribute('font-size', '12');
+      actLabel.setAttribute('font-weight', '700');
+      actLabel.setAttribute('fill', '#0b0b0b');
+      actLabel.textContent = fmt0(actLast.value);
+      svgEl.appendChild(actLabel);
+    }
+
+    // ---- Hover layer ----
+    const crosshair = document.createElementNS(ns, 'line');
+    crosshair.setAttribute('y1', padT); crosshair.setAttribute('y2', padT + plotH);
+    crosshair.setAttribute('stroke', '#898781'); crosshair.setAttribute('stroke-width', '1');
+    crosshair.setAttribute('opacity', '0');
+    svgEl.appendChild(crosshair);
+
+    const hoverDot = document.createElementNS(ns, 'circle');
+    hoverDot.setAttribute('r', '4');
+    hoverDot.setAttribute('stroke', '#fcfcfb'); hoverDot.setAttribute('stroke-width', '2');
+    hoverDot.setAttribute('opacity', '0');
+    svgEl.appendChild(hoverDot);
+
+    const hitArea = document.createElementNS(ns, 'rect');
+    hitArea.setAttribute('x', padL); hitArea.setAttribute('y', 0);
+    hitArea.setAttribute('width', plotW); hitArea.setAttribute('height', height);
+    hitArea.setAttribute('fill', 'transparent');
+    svgEl.appendChild(hitArea);
+
+    function tooltipRow(colorVar, label, value) {
+      const row = document.createElement('div');
+      row.className = 'tt-row';
+      const key = document.createElement('span');
+      key.className = 'tt-key';
+      key.style.background = colorVar;
+      const lab = document.createElement('span');
+      lab.textContent = label + ': ';
+      const val = document.createElement('span');
+      val.className = 'tt-val';
+      val.textContent = value;
+      row.appendChild(key); row.appendChild(lab); row.appendChild(val);
+      return row;
+    }
+
+    function handleMove(evt) {
+      const rect = svgEl.getBoundingClientRect();
+      const scaleX = width / rect.width;
+      const mouseX = (evt.clientX - rect.left) * scaleX;
+      let idx = Math.round(((mouseX - padL) / plotW) * (model.est.length - 1));
+      idx = Math.max(0, Math.min(model.est.length - 1, idx));
+      const pt = model.est[idx];
+
+      // Snap to a real check-in when the pointer is within one sample step of one.
+      let near = null, bestD = Infinity;
+      model.actual.forEach((a) => { const d = Math.abs(a.t - pt.t); if (d < bestD) { bestD = d; near = a; } });
+      if (bestD > span / model.est.length) near = null;
+
+      const px = near ? xAt(near.t) : xAt(pt.t);
+      const py = near ? yAt(near.value) : yAt(pt.value);
+      crosshair.setAttribute('x1', px); crosshair.setAttribute('x2', px); crosshair.setAttribute('opacity', '1');
+      hoverDot.setAttribute('cx', px); hoverDot.setAttribute('cy', py);
+      hoverDot.setAttribute('fill', near ? 'var(--goals)' : 'var(--text-muted)');
+      hoverDot.setAttribute('opacity', '1');
+
+      const svgRect = svgEl.getBoundingClientRect();
+      tooltipEl.style.left = ((px / width) * svgRect.width) + 'px';
+      tooltipEl.style.top = ((py / height) * svgRect.height) + 'px';
+      tooltipEl.style.opacity = '1';
+      tooltipEl.innerHTML = '';
+
+      const header = document.createElement('div');
+      const shownT = near ? near.t : pt.t;
+      header.textContent = (near ? fmtFullDate(parseDateStr(near.dateStr)) : fmtMonthYear(dateAtOffset(shownT))) +
+        ' · age ' + Math.round(model.age + shownT);
+      tooltipEl.appendChild(header);
+
+      const estHere = near ? netWorthAtYear(model.inp, near.t).total : pt.value;
+      tooltipEl.appendChild(tooltipRow('var(--text-muted)', 'Estimated', fmt0(estHere)));
+      if (near) {
+        tooltipEl.appendChild(tooltipRow('var(--goals)', 'Your actual', fmt0(near.value)));
+        const diff = near.value - estHere;
+        const totalRow = document.createElement('div');
+        totalRow.className = 'tt-total';
+        totalRow.textContent = diff >= 0 ? fmt0(diff) + ' ahead' : fmt0(-diff) + ' behind';
+        tooltipEl.appendChild(totalRow);
+      }
+    }
+    function handleLeave() {
+      crosshair.setAttribute('opacity', '0');
+      hoverDot.setAttribute('opacity', '0');
+      tooltipEl.style.opacity = '0';
+    }
+    hitArea.addEventListener('pointermove', handleMove);
+    hitArea.addEventListener('pointerleave', handleLeave);
+  }
+
+  function renderTrackerHistory(model) {
+    const emptyEl = $('tk-history-empty');
+    const tableEl = $('tk-history-table');
+    const tbody = $('tk-history-tbody');
+    tbody.innerHTML = '';
+
+    if (model.actual.length === 0) {
+      emptyEl.style.display = 'block';
+      tableEl.style.display = 'none';
+      return;
+    }
+    emptyEl.style.display = 'none';
+    tableEl.style.display = 'table';
+
+    // Newest first, so the most recent check-in is the one you see straight away.
+    model.actual.slice().reverse().forEach((p) => {
+      const estHere = netWorthAtYear(model.inp, p.t).total;
+      const diff = p.value - estHere;
+
+      const tr = document.createElement('tr');
+
+      const tdDate = document.createElement('td');
+      tdDate.textContent = fmtFullDate(parseDateStr(p.dateStr));
+
+      const tdActual = document.createElement('td');
+      tdActual.className = 'fd-tk-num';
+      tdActual.textContent = fmt0(p.value);
+
+      const tdEst = document.createElement('td');
+      tdEst.className = 'fd-tk-num';
+      tdEst.textContent = fmt0(estHere);
+
+      const tdDiff = document.createElement('td');
+      tdDiff.className = 'fd-tk-num ' + (diff >= 0 ? 'fd-tk-ahead' : 'fd-tk-behind');
+      tdDiff.textContent = (diff >= 0 ? '+' : '−') + fmt0(Math.abs(diff));
+
+      const tdDel = document.createElement('td');
+      const delBtn = document.createElement('button');
+      delBtn.className = 'fd-tk-remove';
+      delBtn.textContent = 'Delete';
+      delBtn.setAttribute('data-checkin-id', String(p.id));
+      delBtn.addEventListener('click', () => deleteCheckin(p.id));
+      tdDel.appendChild(delBtn);
+
+      tr.appendChild(tdDate); tr.appendChild(tdActual); tr.appendChild(tdEst);
+      tr.appendChild(tdDiff); tr.appendChild(tdDel);
+      tbody.appendChild(tr);
+    });
+  }
+
+  function renderTrackerHeadline(model) {
+    const labelEl = $('tk-hero-label');
+    const valEl = $('tk-hero-value');
+
+    if (model.actual.length === 0) {
+      labelEl.textContent = "How you're doing against your estimate";
+      valEl.textContent = 'Log your first check-in below to start tracking.';
+      valEl.style.color = 'var(--text-muted)';
+      valEl.style.fontSize = '17px';
+      return { count: 0, diff: 0, latestActual: 0, latestEstimated: 0, latestDate: null };
+    }
+
+    const latest = model.actual[model.actual.length - 1];
+    const estHere = netWorthAtYear(model.inp, latest.t).total;
+    const diff = latest.value - estHere;
+    const tolerance = Math.max(500, Math.abs(estHere) * 0.005);
+    const dateLabel = fmtFullDate(parseDateStr(latest.dateStr));
+
+    valEl.style.fontSize = '';
+    if (diff > tolerance) {
+      labelEl.textContent = "You're ahead of your estimate — as at " + dateLabel;
+      valEl.style.color = 'var(--status-good)';
+      valEl.textContent = fmt0(diff);
+    } else if (diff < -tolerance) {
+      labelEl.textContent = "You're behind your estimate — as at " + dateLabel;
+      valEl.style.color = 'var(--status-critical)';
+      valEl.textContent = fmt0(-diff);
+    } else {
+      labelEl.textContent = 'Right on your estimate — as at ' + dateLabel;
+      valEl.style.color = 'var(--text-primary)';
+      valEl.textContent = fmt0(Math.abs(diff));
+    }
+
+    return { count: model.actual.length, diff, latestActual: latest.value, latestEstimated: estHere, latestDate: dateLabel };
+  }
+
+  function trackerAxisLabel(t, age) {
+    return fmtMonthYear(dateAtOffset(t)) + ' · age ' + Math.round(age + t);
+  }
+
+  function calcTracker() {
+    updateTrackerFormTotal();
+    const model = buildTrackerModel();
+    const summary = renderTrackerHeadline(model);
+    drawTrackerChart($('tk-chart'), $('tk-tooltip'), model);
+    $('tk-x-start').textContent = trackerAxisLabel(model.x0, model.age);
+    $('tk-x-end').textContent = trackerAxisLabel(model.x1, model.age);
+
+    if (model.actual.length === 0) {
+      $('tk-chart-hint').textContent = "Nothing logged yet — the faint line is what your other tabs estimate for you over the next couple of years.";
+    } else if (model.actual.length === 1) {
+      $('tk-chart-hint').textContent = 'Add another check-in to see your trend.';
+    } else {
+      $('tk-chart-hint').textContent = '';
+    }
+
+    renderTrackerHistory(model);
+    return summary;
+  }
+
+  async function deleteCheckin(id) {
+    const { error } = await sb.from('networth_checkins').delete().eq('id', id);
+    if (error) {
+      console.error('deleteCheckin error:', error);
+      showTrackerMsg('Could not delete that check-in: ' + error.message, false);
+      return;
+    }
+    await loadCheckins();
+    showTrackerMsg('Check-in removed.', true);
+  }
+
+  $('tk-add-btn').addEventListener('click', async () => {
+    clearTrackerMsg();
+    const dateStr = $('tk-date').value;
+    const parsed = parseDateStr(dateStr);
+    if (!dateStr || !isFinite(parsed.getTime())) {
+      showTrackerMsg('Pick the date this check-in is for.', false);
+      return;
+    }
+    const property = trackerFieldValue('tk-property');
+    const mortgage = trackerFieldValue('tk-mortgage');
+    const pension = trackerFieldValue('tk-pension');
+    const investments = trackerFieldValue('tk-investments');
+    const cash = trackerFieldValue('tk-cash');
+    if (property === 0 && mortgage === 0 && pension === 0 && investments === 0 && cash === 0) {
+      showTrackerMsg('Fill in at least one of the boxes above before adding a check-in.', false);
+      return;
+    }
+    if (!currentUser) {
+      showTrackerMsg('You need to be logged in to save a check-in.', false);
+      return;
+    }
+
+    const actualTotal = checkinTotal(property, mortgage, pension, investments, cash);
+    const t = yearOffsetOf(dateStr);
+    const projectedTotal = netWorthAtYear(readNetWorthInputs(), t).total;
+    const baseAge = parseInt($('nw-age').value, 10) || 30;
+
+    const btn = $('tk-add-btn');
+    const originalLabel = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = 'Saving…';
+    const { error } = await sb.from('networth_checkins').insert({
+      user_id: currentUser.id,
+      checkin_date: dateStr,
+      checkin_age: Math.round(baseAge + t),
+      property_value: property,
+      mortgage_balance: mortgage,
+      pension_value: pension,
+      investments_value: investments,
+      cash_value: cash,
+      actual_total: actualTotal,
+      // A historical record of what the plan predicted on the day you logged it.
+      // The chart and table always show the *live* estimate instead, so an old
+      // row disagreeing with this stored figure is expected, not a bug.
+      projected_total: projectedTotal,
+    });
+    btn.disabled = false;
+    btn.textContent = originalLabel;
+
+    if (error) {
+      console.error('addCheckin error:', error);
+      showTrackerMsg('Could not save that check-in: ' + error.message, false);
+      return;
+    }
+    await loadCheckins();
+    showTrackerMsg('Check-in saved for ' + fmtFullDate(parsed) + ' — a net worth of ' + fmt0(actualTotal) + '.', true);
+  });
+
+  $('tk-log-btn').addEventListener('click', () => {
+    const r = calcTracker();
+    if (!r.count) {
+      showTrackerMsg("There's nothing to log yet — add a check-in first.", false);
+      return;
+    }
+    const gap = r.diff >= 0 ? fmt0(r.diff) + ' ahead of' : fmt0(-r.diff) + ' behind';
+    addDiaryEntry('Tracker', 'var(--goals)',
+      'Check-in ' + r.latestDate + ': actual ' + fmt0(r.latestActual) + ' vs estimated ' + fmt0(r.latestEstimated) +
+      ' — ' + gap + ' estimate (' + r.count + ' check-in' + (r.count === 1 ? '' : 's') + ' logged)');
+  });
+
+  ['tk-property', 'tk-mortgage', 'tk-pension', 'tk-investments', 'tk-cash'].forEach((id) => {
+    $(id).addEventListener('input', updateTrackerFormTotal);
+    $(id).addEventListener('change', updateTrackerFormTotal);
+  });
+  $('tk-date').addEventListener('change', clearTrackerMsg);
+
+  // ---------------- Init ----------------
+  $('tk-date').value = isoDateStr(new Date());
+  calcMortgage();
+  calcRetirement();
+  calcInvestments();
+  calcCash();
+  calcNetWorth();
+  calcGoalPlanner();
+  calcTracker();
+  renderDiary();
+  initAuth();
+
+  window.addEventListener('resize', () => { calcRetirement(); calcInvestments(); calcCash(); calcNetWorth(); calcGoalPlanner(); calcTracker(); });
+
+  // ---------------- Download report (PDF) ----------------
+
+  // Redraws the net worth stacked-area chart onto an offscreen canvas and
+  // returns it as a PNG data URL, so it can be embedded as an image in the PDF
+  // (jsPDF can't render our on-page SVG charts directly, so this reproduces the
+  // same chart — same bands, same colors, same total line — with canvas 2D calls).
+  function renderNetWorthChartImage(series, width, height) {
+    const scale = 2; // draw at 2x so the embedded image stays crisp
+    const canvas = document.createElement('canvas');
+    canvas.width = width * scale;
+    canvas.height = height * scale;
+    const ctx = canvas.getContext('2d');
+    ctx.scale(scale, scale);
+
+    const bands = [
+      { key: 'equity', color: '#2a78d6', label: 'Home equity' },
+      { key: 'retirement', color: '#eb6834', label: 'Retirement' },
+      { key: 'investments', color: '#1baf7a', label: 'Investments' },
+      { key: 'cash', color: '#4a3aa7', label: 'Cash at hand' },
+    ];
+
+    ctx.fillStyle = '#fcfcfb';
+    ctx.fillRect(0, 0, width, height);
+
+    const legendH = 26;
+    const padL = 10, padR = 14, padT = legendH + 14, padB = 26;
+    const plotW = width - padL - padR;
+    const plotH = height - padT - padB;
+    const maxV = Math.max(...series.map((p) => p.total), 1) * 1.05;
+
+    function xAt(i) { return padL + (series.length === 1 ? 0 : (i / (series.length - 1)) * plotW); }
+    function yAt(v) { return padT + plotH - (v / maxV) * plotH; }
+
+    // Legend
+    ctx.font = '11px Helvetica, Arial, sans-serif';
+    ctx.textBaseline = 'middle';
+    ctx.textAlign = 'left';
+    let lx = padL;
+    bands.forEach((band) => {
+      ctx.fillStyle = band.color;
+      ctx.fillRect(lx, 10, 10, 10);
+      ctx.fillStyle = '#52514e';
+      ctx.fillText(band.label, lx + 14, 15);
+      lx += ctx.measureText(band.label).width + 34;
+    });
+
+    // Baseline
+    ctx.strokeStyle = '#e1e0d9';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(padL, padT + plotH);
+    ctx.lineTo(width - padR, padT + plotH);
+    ctx.stroke();
+
+    // Stacked bands: equity -> +retirement -> +investments -> +cash (== total)
+    let cumPrev = series.map(() => 0);
+    bands.forEach((band) => {
+      const cumNext = series.map((p, i) => cumPrev[i] + p[band.key]);
+      ctx.beginPath();
+      ctx.moveTo(xAt(0), yAt(cumNext[0]));
+      for (let i = 1; i < series.length; i++) ctx.lineTo(xAt(i), yAt(cumNext[i]));
+      for (let i = series.length - 1; i >= 0; i--) ctx.lineTo(xAt(i), yAt(cumPrev[i]));
+      ctx.closePath();
+      ctx.fillStyle = band.color;
+      ctx.globalAlpha = 0.55;
+      ctx.fill();
+      ctx.globalAlpha = 1;
+      cumPrev = cumNext;
+    });
+
+    // Total line along the top of the stack
+    ctx.beginPath();
+    ctx.moveTo(xAt(0), yAt(series[0].total));
+    for (let i = 1; i < series.length; i++) ctx.lineTo(xAt(i), yAt(series[i].total));
+    ctx.strokeStyle = '#0b0b0b';
+    ctx.lineWidth = 2;
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+    ctx.stroke();
+
+    // End dot + headline total label
+    const lastI = series.length - 1;
+    const ex = xAt(lastI), ey = yAt(series[lastI].total);
+    ctx.beginPath();
+    ctx.arc(ex, ey, 3.5, 0, Math.PI * 2);
+    ctx.fillStyle = '#0b0b0b';
+    ctx.fill();
+    ctx.font = 'bold 12px Helvetica, Arial, sans-serif';
+    ctx.fillStyle = '#0b0b0b';
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'bottom';
+    ctx.fillText(fmt0(series[lastI].total), ex, ey - 8);
+
+    // Age axis labels
+    ctx.font = '10px Helvetica, Arial, sans-serif';
+    ctx.fillStyle = '#898781';
+    ctx.textBaseline = 'alphabetic';
+    ctx.textAlign = 'left';
+    ctx.fillText('Age ' + series[0].age, padL, height - 8);
+    ctx.textAlign = 'right';
+    ctx.fillText('Age ' + series[lastI].age, width - padR, height - 8);
+
+    return canvas.toDataURL('image/png');
+  }
+
+  function downloadReport() {
+    if (!window.jspdf || !window.jspdf.jsPDF) {
+      alert('The PDF library is still loading — please wait a second and try again.');
+      return;
+    }
+    const btn = $('fd-download-report');
+    btn.disabled = true;
+    const originalLabel = btn.textContent;
+    btn.textContent = 'Preparing…';
+
+    try {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+      const marginX = 48;
+      let y = 56;
+
+      function checkPageBreak(space) {
+        if (y + space > pageHeight - 48) {
+          doc.addPage();
+          y = 56;
+        }
+      }
+      function addTitle(text) {
+        checkPageBreak(30);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(20);
+        doc.setTextColor(11, 11, 11);
+        doc.text(text, marginX, y);
+        y += 26;
+      }
+      function addSectionHeading(text) {
+        checkPageBreak(30);
+        y += 8;
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(13);
+        doc.setTextColor(11, 11, 11);
+        doc.text(text, marginX, y);
+        y += 6;
+        doc.setDrawColor(225, 224, 217);
+        doc.line(marginX, y, pageWidth - marginX, y);
+        y += 16;
+      }
+      function addLine(label, value) {
+        checkPageBreak(16);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(10.5);
+        doc.setTextColor(82, 81, 78);
+        doc.text(String(label), marginX, y);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(11, 11, 11);
+        doc.text(String(value), pageWidth - marginX, y, { align: 'right' });
+        y += 16;
+      }
+      function addParagraph(text) {
+        const lines = doc.splitTextToSize(text, pageWidth - marginX * 2);
+        checkPageBreak(lines.length * 12 + 6);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(9);
+        doc.setTextColor(137, 135, 129);
+        doc.text(lines, marginX, y);
+        y += lines.length * 12 + 6;
+      }
+
+      addTitle('Financial Diary — Your Report');
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(10);
+      doc.setTextColor(137, 135, 129);
+      let generatedStr = 'Generated ' + todayStr();
+      if (accountName) generatedStr += ' for ' + accountName;
+      if (accountEmail) generatedStr += ' (' + accountEmail + ')';
+      doc.text(generatedStr, marginX, y);
+      y += 22;
+
+      // Recalculate every tab so the report always reflects what's currently on screen.
+      const mg = calcMortgage();
+      addSectionHeading('Mortgage');
+      addLine('Loan amount', fmt0(mg.loanBase));
+      addLine('Interest rate', mg.annualRatePct + '%');
+      addLine('Type', mg.type === 'interest-only' ? 'Interest only' : 'Repayment');
+      addLine('Term', mg.years + ' years');
+      addLine('Monthly payment', fmt0(mg.monthlyPayment) + '/mo');
+      addLine('Total lifetime cost', fmt0(mg.totalCost));
+
+      const rt = calcRetirement();
+      addSectionHeading('Retirement');
+      addLine('Current pot', fmt0(rt.pot));
+      addLine('Monthly contribution', fmt0(rt.contrib) + '/mo');
+      addLine('Growth rate', rt.rate + '%');
+      addLine('Years to retirement', rt.years + ' yrs');
+      addLine('Projected pot', fmt0(rt.finalValue));
+      addLine('Estimated annual income', fmt0(rt.annualIncome) + '/yr');
+
+      const iv = calcInvestments();
+      addSectionHeading('Investments');
+      addLine('Initial lump sum', fmt0(iv.lump));
+      addLine('Monthly contribution', fmt0(iv.contrib) + '/mo');
+      addLine('Growth rate', iv.rate + '%');
+      addLine('Time horizon', iv.years + ' yrs');
+      addLine('Projected value', fmt0(iv.finalValue));
+
+      const cs = calcCash();
+      addSectionHeading('Cash at hand');
+      addLine('Current savings', fmt0(cs.lump));
+      addLine('Monthly saving', fmt0(cs.contrib) + '/mo');
+      addLine('Interest rate', cs.rate + '%');
+      addLine('Time horizon', cs.years + ' yrs');
+      addLine('Projected value', fmt0(cs.finalValue));
+
+      const nw = calcNetWorth();
+      addSectionHeading('Net worth projection');
+      addLine('Projected net worth at age ' + nw.targetAge, fmt0(nw.totalNetWorth));
+      addLine('— Home equity', fmt0(nw.equity));
+      addLine('— Retirement', fmt0(nw.retirement));
+      addLine('— Investments', fmt0(nw.investments));
+      addLine('— Cash at hand', fmt0(nw.cash));
+
+      if (nw.series && nw.series.length > 1) {
+        y += 4;
+        const chartW = pageWidth - marginX * 2;
+        const chartH = chartW * (260 / 700);
+        checkPageBreak(chartH + 14);
+        const chartDataUrl = renderNetWorthChartImage(nw.series, 700, 260);
+        doc.addImage(chartDataUrl, 'PNG', marginX, y, chartW, chartH);
+        y += chartH + 18;
+      }
+
+      const gp = calcGoalPlanner();
+      addSectionHeading('Goal planner');
+      addLine('Target net worth by age ' + gp.targetAge, fmt0(gp.targetNetWorth));
+      addLine('Total needed per month', fmt0(gp.totalRequired) + '/mo');
+      addLine('— House', fmt0(gp.houseRequired) + '/mo');
+      addLine('— Retirement', fmt0(gp.retirementRequired) + '/mo');
+      addLine('— Investments', fmt0(gp.investmentsRequired) + '/mo');
+      addLine('— Cash', fmt0(gp.cashRequired) + '/mo');
+
+      const tk = calcTracker();
+      addSectionHeading('Tracker — estimate vs. real life');
+      if (!tk.count) {
+        addParagraph('No check-ins logged yet. Use the Tracker tab to record what you actually have, and this section will show how your real numbers compare with the estimate above.');
+      } else {
+        addLine('Check-ins logged', String(tk.count));
+        addLine('Latest check-in', tk.latestDate);
+        addLine('Your actual net worth', fmt0(tk.latestActual));
+        addLine('Estimated at that date', fmt0(tk.latestEstimated));
+        addLine(tk.diff >= 0 ? 'Ahead of estimate by' : 'Behind estimate by', fmt0(Math.abs(tk.diff)));
+      }
+
+      addSectionHeading('Your diary (' + diaryEntries.length + ' entr' + (diaryEntries.length === 1 ? 'y' : 'ies') + ')');
+      if (diaryEntries.length === 0) {
+        addParagraph('No entries logged yet.');
+      } else {
+        diaryEntries.forEach((e) => {
+          checkPageBreak(30);
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(9.5);
+          doc.setTextColor(11, 11, 11);
+          doc.text(e.date + ' — ' + e.category, marginX, y);
+          y += 12;
+          const lines = doc.splitTextToSize(e.summary, pageWidth - marginX * 2);
+          doc.setFont('helvetica', 'normal');
+          doc.setFontSize(9);
+          doc.setTextColor(82, 81, 78);
+          doc.text(lines, marginX, y);
+          y += lines.length * 11 + 10;
+        });
+      }
+
+      addSectionHeading('Important');
+      addParagraph('This report is generated from a prototype tool and gives a general, simplified indication of costs and projections based on the figures you entered and constant assumed growth rates — real markets, rates and property prices move up and down. It is not financial advice. For a plan tailored to your circumstances, speak to a regulated financial adviser.');
+
+      doc.save('financial-diary-report.pdf');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = originalLabel;
+    }
+  }
+
+  $('fd-download-report').addEventListener('click', downloadReport);
+})();
+</script>
+</body>
+</html>
