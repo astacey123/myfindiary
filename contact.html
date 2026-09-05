@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap">
+<title>Contact — Financial Diary</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+<style>
+  :root {
+    color-scheme: light;
+
+    /* Type — Inter, with the previous system stack kept underneath it so the
+       page keeps its shape if Google Fonts is blocked or slow. */
+    --font-sans: 'Inter', system-ui, -apple-system, "Segoe UI", Roboto,
+                 "Helvetica Neue", Arial, sans-serif;
+
+    /* Type scale — deliberate steps, not ad-hoc values. */
+    --fs-display: 42px;
+    --fs-h1:      30px;
+    --fs-h2:      21px;
+    --fs-h3:      17px;
+    --fs-lg:      15px;
+    --fs-md:      14px;
+    --fs-sm:      13px;
+    --fs-xs:      12px;
+    --fs-2xs:     11px;
+
+    /* Spacing scale — 4px base. */
+    --sp-1: 4px;  --sp-2: 8px;  --sp-3: 12px; --sp-4: 16px; --sp-5: 20px;
+    --sp-6: 24px; --sp-7: 32px; --sp-8: 44px; --sp-9: 64px;
+
+    /* Radii + restrained elevation. */
+    --r-sm: 8px; --r-md: 10px; --r-lg: 14px; --r-pill: 999px;
+    --shadow-1: 0 1px 2px rgba(11,11,11,0.04);
+    --shadow-2: 0 6px 18px rgba(11,11,11,0.07);
+    --ease: cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: var(--font-sans);
+    font-size: var(--fs-lg);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    background: var(--page);
+    color: var(--text-primary);
+  }
+  .fd-root h1, .fd-root h2, .fd-root h3, .fd-root h4 {
+    line-height: 1.2; letter-spacing: -0.015em; font-weight: 700;
+    color: var(--text-primary);
+  }
+  :focus-visible { outline: 2px solid var(--mortgage); outline-offset: 2px; }
+
+  .fd-root {
+    --page:           #ffffff;
+    --surface-1:      #fafaf9;
+    --surface-2:      #f0efec;
+    --text-primary:   #0b0b0b;
+    --text-secondary: #52514e;
+    --text-muted:     #6b6862;
+    --ink-hover:      #2b2a27;
+    --gridline:       #e4e3dd;
+    --border:         rgba(11,11,11,0.12);
+
+    --navy:      #1d3557;
+    --on-navy:   #cfe0f5;
+    --navy-line: rgba(29,53,87,0.22);
+
+    --cta:       #166534;
+    --cta-hover: #14532d;
+    --on-cta:    #ffffff;
+    --mortgage:       #2a78d6;
+    --retirement:     #eb6834;
+    --investments:    #1baf7a;
+    --cash:           #4a3aa7;
+    --good:           #0ca30c;
+    --bad:            #b3261e;
+    background: var(--page);
+
+    /* The page is a column so the footer can be pushed to the bottom on short
+       states (the success panel) rather than floating halfway up. */
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .fd-wrap {
+    max-width: 960px; margin: 0 auto; width: 100%;
+    padding: var(--sp-7) var(--sp-5) var(--sp-9);
+    flex: 1 0 auto;
+  }
+  @media (max-width: 460px) { .fd-wrap { padding: var(--sp-6) var(--sp-4) var(--sp-8); } }
+
+  /* ---------- Nav / brand ---------- */
+  .fd-nav {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: var(--sp-4); flex-wrap: wrap;
+    margin-bottom: var(--sp-7); padding-bottom: var(--sp-4);
+    border-bottom: 1px solid var(--navy-line);
+  }
+  .fd-brand {
+    display: flex; align-items: center; gap: 10px;
+    font-weight: 700; font-size: var(--fs-h3); letter-spacing: -0.017em;
+    color: var(--navy);
+  }
+  .fd-brand-mark {
+    width: 28px; height: 28px; border-radius: 8px;
+    background: linear-gradient(135deg, var(--navy), var(--mortgage));
+  }
+  .fd-nav-actions { display: flex; align-items: center; gap: 10px; }
+  .fd-back-link {
+    font-size: var(--fs-sm); font-weight: 600; color: var(--text-secondary); text-decoration: none;
+    padding: 6px 4px; letter-spacing: -0.004em;
+    transition: color .15s var(--ease);
+  }
+  .fd-back-link:hover { color: var(--text-primary); }
+
+  /* ---------- Buttons ---------- */
+  .fd-btn {
+    font-family: inherit; font-size: var(--fs-lg); font-weight: 600; cursor: pointer;
+    border: 1px solid transparent; border-radius: var(--r-sm); padding: 12px 20px;
+    line-height: 1.2; letter-spacing: -0.006em;
+    transition: background-color .15s var(--ease), border-color .15s var(--ease),
+                box-shadow .15s var(--ease), transform .15s var(--ease);
+  }
+  /* Ordinary action, so it stays ink. Green is reserved for "sign up / pay". */
+  .fd-btn-primary { background: var(--text-primary); color: var(--on-cta); box-shadow: var(--shadow-1); }
+  .fd-btn-primary:hover { background: var(--ink-hover); box-shadow: var(--shadow-2); }
+  .fd-btn-primary:active { transform: translateY(1px); box-shadow: none; }
+  .fd-btn-primary[disabled] { opacity: 0.6; cursor: default; box-shadow: none; }
+  .fd-btn-secondary {
+    background: var(--surface-1); color: var(--text-primary); border-color: var(--border);
+    box-shadow: var(--shadow-1);
+  }
+  .fd-btn-secondary:hover { background: var(--surface-2); border-color: rgba(11,11,11,0.18); }
+  .fd-btn-full { width: 100%; }
+  /* One of the buttons in the success panel is a link, so it needs the box
+     model and the un-decorated text a <button> already has. */
+  a.fd-btn { display: inline-flex; align-items: center; text-decoration: none; }
+
+  h1.fd-page-title {
+    font-size: 26px; margin: 0 0 var(--sp-2); letter-spacing: -0.024em;
+    line-height: 1.15; font-weight: 700; color: var(--navy);
+  }
+  .fd-page-sub {
+    font-size: var(--fs-lg); color: var(--text-secondary); margin: 0 0 var(--sp-7);
+    line-height: 1.6; max-width: 62ch;
+  }
+
+  /* ---------- Section furniture (mirrors the landing page) ---------- */
+  .fd-section { margin-top: var(--sp-9); }
+  .fd-section:first-of-type { margin-top: 0; }
+  .fd-section-head { max-width: 38em; margin: 0 0 var(--sp-6); }
+  .fd-eyebrow {
+    display: flex; align-items: center; gap: var(--sp-2);
+    font-size: var(--fs-2xs); font-weight: 700;
+    letter-spacing: 0.1em; text-transform: uppercase; color: var(--navy);
+    margin-bottom: var(--sp-3);
+  }
+  .fd-eyebrow::before {
+    content: ""; width: 18px; height: 2px; border-radius: 1px;
+    background: var(--navy); flex: none;
+  }
+  .fd-section-head h2 {
+    font-size: clamp(22px, 3.2vw, 27px); margin: 0 0 var(--sp-3);
+    letter-spacing: -0.026em; line-height: 1.15; text-wrap: balance; color: var(--navy);
+  }
+  .fd-section-head p {
+    font-size: var(--fs-h3); color: var(--text-secondary); margin: 0;
+    line-height: 1.6; letter-spacing: -0.004em; text-wrap: pretty;
+  }
+  .fd-lp-panel {
+    background: var(--surface-1); border: 1px solid var(--border);
+    border-radius: var(--r-lg); padding: var(--sp-7); box-shadow: var(--shadow-1);
+  }
+  @media (max-width: 600px) { .fd-lp-panel { padding: var(--sp-5); } }
+
+  /* ---------- Self-serve answers ---------- */
+  .fd-faq-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-7); }
+  @media (max-width: 760px) { .fd-faq-grid { grid-template-columns: 1fr; gap: var(--sp-6); } }
+  .fd-faq-item { scroll-margin-top: var(--sp-5); min-width: 0; }
+  .fd-faq-item h3 { font-size: var(--fs-h3); margin: 0 0 var(--sp-2); letter-spacing: -0.016em; color: var(--navy); }
+  .fd-faq-item p { font-size: var(--fs-sm); color: var(--text-secondary); line-height: 1.65; margin: 0 0 var(--sp-3); text-wrap: pretty; }
+  .fd-faq-item p:last-child { margin-bottom: 0; }
+  .fd-faq-item ul { margin: 0 0 var(--sp-3); padding-left: 1.15em; }
+  .fd-faq-item li { font-size: var(--fs-sm); color: var(--text-secondary); line-height: 1.65; margin-bottom: var(--sp-1); }
+  .fd-faq-item a { color: var(--navy); font-weight: 600; }
+  .fd-jump {
+    display: flex; flex-wrap: wrap; gap: var(--sp-2);
+    margin: 0 0 var(--sp-6); padding: 0; list-style: none;
+  }
+  .fd-jump a {
+    display: inline-block; font-size: var(--fs-xs); font-weight: 600;
+    color: var(--text-secondary); text-decoration: none;
+    background: var(--surface-2); border: 1px solid var(--border);
+    border-radius: var(--r-pill); padding: 6px 12px;
+    transition: background-color .15s var(--ease), color .15s var(--ease);
+  }
+  .fd-jump a:hover { background: var(--surface-1); color: var(--navy); }
+
+  /* ---------- Form ---------- */
+  .fd-form-card {
+    max-width: 640px; background: var(--surface-1);
+    border: 1px solid var(--border); border-radius: var(--r-lg);
+    padding: var(--sp-7); box-shadow: var(--shadow-1);
+  }
+  @media (max-width: 600px) { .fd-form-card { padding: var(--sp-5); } }
+  .fd-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-5); }
+  @media (max-width: 600px) { .fd-form-grid { grid-template-columns: 1fr; gap: var(--sp-4); } }
+  .fd-field { display: flex; flex-direction: column; gap: 6px; margin-bottom: var(--sp-5); }
+  .fd-form-grid .fd-field { margin-bottom: 0; }
+  .fd-field.span2 { grid-column: 1 / -1; }
+  .fd-label { font-size: var(--fs-sm); font-weight: 600; color: var(--text-secondary); letter-spacing: -0.002em; }
+  .fd-input, .fd-select, .fd-textarea {
+    font-size: var(--fs-lg); padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--r-sm);
+    background: var(--surface-2); color: var(--text-primary); font-family: inherit; width: 100%;
+    line-height: 1.4;
+    transition: border-color .15s var(--ease), background-color .15s var(--ease);
+  }
+  .fd-input:hover, .fd-select:hover, .fd-textarea:hover { border-color: rgba(11,11,11,0.18); }
+  .fd-input:focus, .fd-select:focus, .fd-textarea:focus { outline: 2px solid var(--mortgage); outline-offset: 1px; }
+  .fd-textarea { min-height: 150px; resize: vertical; line-height: 1.55; }
+  .fd-select { appearance: none; -webkit-appearance: none; padding-right: 34px;
+    background-image: linear-gradient(45deg, transparent 50%, #52514e 50%), linear-gradient(135deg, #52514e 50%, transparent 50%);
+    background-position: calc(100% - 17px) calc(50% + 1px), calc(100% - 12px) calc(50% + 1px);
+    background-size: 5px 5px, 5px 5px; background-repeat: no-repeat;
+  }
+  .fd-input.is-invalid, .fd-select.is-invalid, .fd-textarea.is-invalid {
+    border-color: var(--bad); background: #fdf3f2;
+  }
+  .fd-err { font-size: var(--fs-xs); color: var(--bad); margin: 0; line-height: 1.5; }
+  .fd-err:empty { display: none; }
+  .fd-hint { font-size: var(--fs-xs); color: var(--text-muted); margin: 0; line-height: 1.5; }
+  .fd-counter { font-variant-numeric: tabular-nums; }
+  .fd-counter.is-over { color: var(--bad); font-weight: 600; }
+  .fd-form-foot { margin-top: var(--sp-6); }
+  .fd-note { font-size: var(--fs-xs); color: var(--text-muted); line-height: 1.55; margin: var(--sp-3) 0 0; }
+  .fd-form-error {
+    font-size: var(--fs-sm); color: var(--bad); background: #fdf3f2;
+    border: 1px solid rgba(179,38,30,0.28); border-radius: var(--r-sm);
+    padding: var(--sp-3) var(--sp-4); margin: 0 0 var(--sp-4); line-height: 1.6;
+  }
+  .fd-form-error a { color: inherit; }
+  .fd-prefill-note {
+    font-size: var(--fs-xs); color: var(--text-muted); background: var(--surface-2);
+    border: 1px solid var(--border); border-radius: var(--r-sm);
+    padding: var(--sp-2) var(--sp-3); margin: 0 0 var(--sp-5); line-height: 1.55;
+  }
+
+  /* ---------- Sent ---------- */
+  .fd-sent {
+    max-width: 640px; background: var(--surface-1);
+    border: 1px solid var(--border); border-left: 3px solid var(--good);
+    border-radius: var(--r-lg); padding: var(--sp-7); box-shadow: var(--shadow-1);
+  }
+  @media (max-width: 600px) { .fd-sent { padding: var(--sp-5); } }
+  .fd-sent h2 { font-size: var(--fs-h2); margin: 0 0 var(--sp-3); letter-spacing: -0.021em; color: var(--navy); }
+  .fd-sent p { font-size: var(--fs-md); color: var(--text-secondary); line-height: 1.65; margin: 0 0 var(--sp-4); }
+  .fd-sent .fd-spam {
+    font-size: var(--fs-md); color: var(--text-primary); background: var(--surface-2);
+    border: 1px solid var(--border); border-radius: var(--r-sm);
+    padding: var(--sp-4); margin-bottom: var(--sp-5); line-height: 1.6;
+  }
+  .fd-sent-actions { display: flex; flex-wrap: wrap; gap: var(--sp-3); }
+
+  /* ---------- Placeholders the owner must fill in ---------- */
+  .fd-ph {
+    background: #fff3cd; color: #6b4e00; border: 1px dashed #a97b00;
+    border-radius: 4px; padding: 0 5px; font-weight: 600; font-style: normal;
+  }
+
+  /* ---------- Site footer ---------- */
+  .fd-site-footer {
+    flex: none; border-top: 1px solid var(--navy-line); background: var(--surface-1);
+  }
+  .fd-site-footer-inner {
+    max-width: 960px; margin: 0 auto; padding: var(--sp-6) var(--sp-5) var(--sp-4);
+    display: flex; flex-wrap: wrap; align-items: baseline;
+    justify-content: space-between; gap: var(--sp-3) var(--sp-6);
+  }
+  .fd-footer-links { display: flex; flex-wrap: wrap; gap: var(--sp-2) var(--sp-5); }
+  .fd-footer-links a {
+    font-size: var(--fs-sm); font-weight: 600; color: var(--text-secondary);
+    text-decoration: none; transition: color .15s var(--ease);
+  }
+  .fd-footer-links a:hover { color: var(--navy); text-decoration: underline; }
+  .fd-footer-links a[aria-current="page"] { color: var(--navy); }
+  .fd-footer-copy { font-size: var(--fs-xs); color: var(--text-muted); margin: 0; }
+  .fd-footer-legal {
+    max-width: 960px; margin: 0 auto;
+    padding: 0 var(--sp-5) var(--sp-6);
+    font-size: var(--fs-xs); color: var(--text-muted); line-height: 1.6;
+  }
+  @media (max-width: 460px) {
+    .fd-site-footer-inner { padding: var(--sp-5) var(--sp-4) var(--sp-3); }
+    .fd-footer-legal { padding: 0 var(--sp-4) var(--sp-5); }
+  }
+</style>
+</head>
+<body>
+<div class="fd-root">
+<div class="fd-wrap">
+
+  <div class="fd-nav">
+    <div class="fd-brand"><span class="fd-brand-mark"></span> Financial Diary</div>
+    <div class="fd-nav-actions">
+      <a class="fd-back-link" id="fd-back-link" href="index.html">&larr; Back to Financial Diary</a>
+    </div>
+  </div>
+
+  <h1 class="fd-page-title">Contact</h1>
+  <p class="fd-page-sub">One person reads these, so please have a quick look below first — the six questions that come up most are answered properly here, and you'll usually get sorted faster than waiting on a reply. If none of them fit, the form is at the bottom of the page.</p>
+
+  <!-- ============ SELF-SERVE ANSWERS ============ -->
+  <section class="fd-section">
+    <div class="fd-section-head">
+      <span class="fd-eyebrow">Answers first</span>
+      <h2>The six things people write in about</h2>
+      <p>Written out in full, because a real answer now beats an email tomorrow.</p>
+    </div>
+
+    <ul class="fd-jump">
+      <li><a href="#forgotten-password">Forgotten password</a></li>
+      <li><a href="#paid-no-access">Paid but can't get in</a></li>
+      <li><a href="#refund">Refunds</a></li>
+      <li><a href="#change-email">Changing your email</a></li>
+      <li><a href="#privacy">Who can see my figures</a></li>
+      <li><a href="#calculation">A calculation looks wrong</a></li>
+    </ul>
+
+    <div class="fd-faq-grid">
+
+      <div class="fd-faq-item" id="forgotten-password">
+        <h3>I've forgotten my password</h3>
+        <p>You can sort this yourself. Go to <a href="index.html">the log-in screen</a> and click <strong>&ldquo;Forgot password?&rdquo;</strong>, which sits just above the password box. Put in the email you signed up with and you'll be sent a link that opens a &ldquo;Set a new password&rdquo; screen back here on the site.</p>
+        <p>Three things worth knowing before you write in:</p>
+        <ul>
+          <li>The email comes from our sign-in provider, Supabase, not from a friendly-looking address — so <strong>check your spam or junk folder</strong>.</li>
+          <li>The confirmation on screen says the same thing whether or not that address has an account. That's deliberate — it stops anyone using the form to find out who has signed up — so a quiet inbox doesn't necessarily mean something has gone wrong.</li>
+          <li>Reset emails are <strong>rate-limited to roughly a couple an hour</strong>. If you've already clicked it several times in quick succession, the later ones simply won't be sent. Wait an hour and try once, rather than trying again straight away.</li>
+        </ul>
+        <p>Still nothing an hour later? Use the form and say which email address you're trying.</p>
+      </div>
+
+      <div class="fd-faq-item" id="paid-no-access">
+        <h3>I paid but I can't get into my account</h3>
+        <p>Here's what's meant to happen. You create the login first, then you're sent to Stripe's own checkout page to pay the £5. When Stripe confirms the payment it calls back here, your account is marked as paid, and the dashboard unlocks. That callback normally lands within a few seconds.</p>
+        <p>When you come back from Stripe the site waits and re-checks for about twelve seconds. If the callback is slower than that, you'll be left on the &ldquo;Almost there&rdquo; screen even though the money has gone. <strong>Don't pay again.</strong> Wait a minute, then reload the page or sign out and back in — most of the time it has caught up by then.</p>
+        <p>If it still won't unlock, write in with:</p>
+        <ul>
+          <li><strong>The email address you used at Stripe's checkout</strong> — Stripe lets you type a different one there, and if it doesn't match your account email that's usually the whole problem.</li>
+          <li><strong>The email address on your Financial Diary account</strong>, if it's different.</li>
+          <li><strong>Roughly when you paid</strong> — the date and the hour is plenty.</li>
+        </ul>
+        <p>That's enough to find the payment in Stripe and unlock the account by hand.</p>
+      </div>
+
+      <div class="fd-faq-item" id="refund">
+        <h3>I'd like a refund</h3>
+        <p>Fair enough — it's a £5 one-off payment, not a subscription, so there's nothing to cancel and nothing that will bill you again either way.</p>
+        <p>Refunds are considered within <span class="fd-ph">[YOUR REFUND WINDOW — e.g. 14 days]</span> of payment. Send the form below with the email you paid with, roughly when you paid, and a line about what didn't work for you — that last bit isn't a hoop to jump through, it's genuinely how the thing gets improved.</p>
+        <p>Refunds go back through Stripe to the card you paid with; there's no way to send it anywhere else. Once it's issued, banks typically take five to ten working days to show it. The full position is set out in the <a href="terms.html">Terms of Use</a>.</p>
+      </div>
+
+      <div class="fd-faq-item" id="change-email">
+        <h3>How do I change my email address?</h3>
+        <p>There's no self-serve way to do this yet — the account doesn't have a settings screen, so it has to be done for you.</p>
+        <p>Write in <strong>from the address currently on the account</strong> (that's how we know it's you), and say what you'd like it changed to. Your diary entries, goals, check-ins and paid status all stay attached to the same account, so nothing is lost and you won't be asked to pay again.</p>
+        <p>If you've lost access to the old mailbox entirely, say so in the message. You'll be asked a couple of things only the account holder would know instead — roughly when you signed up, and the last few figures you logged.</p>
+      </div>
+
+      <div class="fd-faq-item" id="privacy">
+        <h3>Is my data private? Who can see my figures?</h3>
+        <p>Your figures are stored in a Supabase (PostgreSQL) database with <strong>row-level security</strong> switched on for every table. Each row carries the account id that created it, and the database checks every single read and write against the account making the request. Another member asking for your rows doesn't get refused with an error — they get an empty result, because as far as the database is concerned your rows aren't there.</p>
+        <p><strong>Card details never touch this site.</strong> Payment happens on Stripe's own hosted checkout page, so the card number, expiry and security code go to Stripe and nowhere near this site's database. What is stored here is a Stripe customer and session reference, which is just enough to match a payment to an account.</p>
+        <p>There's no bank connection to authorise, no analytics, and no tracking or advertising cookies. The <a href="privacy.html">Privacy Policy</a> sets out the whole picture, including the bits people usually leave out.</p>
+      </div>
+
+      <div class="fd-faq-item" id="calculation">
+        <h3>Something's wrong with a calculation</h3>
+        <p>Please do send these — they're the most useful messages that arrive. To be able to reproduce it, the message needs:</p>
+        <ul>
+          <li><strong>Which tab or page</strong> — Mortgage, Retirement, Investments, Cash at hand, Net Worth, Goal Planner, Tracker, Pay Off Early or Goal Tracker.</li>
+          <li><strong>Every figure you typed in on that tab</strong>, including the slider positions and any growth or interest rate. Leaving one out usually means it can't be reproduced.</li>
+          <li><strong>The number it showed you</strong>, and <strong>the number you expected</strong> — plus, if you can, how you worked yours out.</li>
+        </ul>
+        <p>Two things that account for most reported differences, worth ruling out first: the projections compound the growth rates <em>you</em> set, so a different assumption gives a different answer without anything being broken; and the mortgage tools assume a capital repayment mortgage held at one fixed rate for the whole term, so they won't match a lender's quote that reverts to a variable rate after a fixed period.</p>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ============ THE FORM ============ -->
+  <section class="fd-section" id="message">
+    <div class="fd-section-head">
+      <span class="fd-eyebrow">Still stuck</span>
+      <h2>Send a message</h2>
+      <p>Everything goes to one inbox and gets read. You don't need an account to use this form.</p>
+    </div>
+
+    <div class="fd-form-card" id="fd-form-card">
+      <p class="fd-prefill-note" id="fd-prefill-note" style="display:none;">You're signed in, so your name and email are filled in already — change them if you'd rather be replied to somewhere else.</p>
+
+      <p class="fd-form-error" id="fd-form-error" style="display:none;" role="alert"></p>
+
+      <form id="fd-contact-form" novalidate>
+        <div class="fd-form-grid">
+          <div class="fd-field">
+            <label class="fd-label" for="fd-c-name">Your name</label>
+            <input type="text" id="fd-c-name" name="name" class="fd-input" maxlength="100" autocomplete="name" placeholder="Jane Smith">
+            <p class="fd-err" id="fd-c-name-err"></p>
+          </div>
+          <div class="fd-field">
+            <label class="fd-label" for="fd-c-email">Your email</label>
+            <input type="email" id="fd-c-email" name="email" class="fd-input" maxlength="255" autocomplete="email" placeholder="jane@example.com">
+            <p class="fd-err" id="fd-c-email-err"></p>
+          </div>
+          <div class="fd-field span2">
+            <label class="fd-label" for="fd-c-topic">What's it about?</label>
+            <select id="fd-c-topic" name="topic" class="fd-select">
+              <option value="">Choose one…</option>
+              <option value="Forgotten password">Forgotten password</option>
+              <option value="Paid but can't get in">Paid but can't get in</option>
+              <option value="Refund request">Refund request</option>
+              <option value="Change my email address">Change my email address</option>
+              <option value="Privacy and my data">Privacy and my data</option>
+              <option value="Something's wrong with a calculation">Something's wrong with a calculation</option>
+              <option value="Something else">Something else</option>
+            </select>
+            <p class="fd-err" id="fd-c-topic-err"></p>
+          </div>
+          <div class="fd-field span2">
+            <label class="fd-label" for="fd-c-message">Your message</label>
+            <textarea id="fd-c-message" name="message" class="fd-textarea" maxlength="5000" placeholder="What's happened, and what you'd like sorted. If it's about a payment or a calculation, the details listed above make it much quicker to fix."></textarea>
+            <p class="fd-hint"><span class="fd-counter" id="fd-c-count">0</span> of 5,000 characters used.</p>
+            <p class="fd-err" id="fd-c-message-err"></p>
+          </div>
+        </div>
+
+        <div class="fd-form-foot">
+          <button type="submit" class="fd-btn fd-btn-primary fd-btn-full" id="fd-c-submit">Send message</button>
+          <p class="fd-note">Your message, your name and your email are stored so you can be replied to — and nothing else is done with them. If you're signed in, your account id is stored alongside it so your account can be found quickly. See the <a href="privacy.html">Privacy Policy</a>.</p>
+        </div>
+      </form>
+    </div>
+
+    <div class="fd-sent" id="fd-sent" style="display:none;" tabindex="-1">
+      <h2>Message sent</h2>
+      <p>Thank you — it's in, and it will be read by a person rather than sorted by a robot.</p>
+      <p><strong>What happens next:</strong> you'll get a reply by email, usually within <span class="fd-ph">[YOUR REPLY TIME — e.g. 2 working days]</span>. If you asked about a payment or a locked account, the reply will normally have it fixed rather than just acknowledge it.</p>
+      <p class="fd-spam"><strong>Please check your spam or junk folder.</strong> Replies from a small site like this one land there more often than they should. If nothing has arrived after a few days, look there before assuming you've been forgotten — and if it really isn't there, send the form again and say it's a second attempt.</p>
+      <div class="fd-sent-actions">
+        <a class="fd-btn fd-btn-secondary" href="index.html">Back to Financial Diary</a>
+        <button type="button" class="fd-btn fd-btn-secondary" id="fd-send-another">Send another message</button>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<footer class="fd-site-footer">
+  <div class="fd-site-footer-inner">
+    <nav class="fd-footer-links" aria-label="Footer">
+      <a href="contact.html" aria-current="page">Contact</a>
+      <a href="privacy.html">Privacy Policy</a>
+      <a href="terms.html">Terms of Use</a>
+    </nav>
+    <p class="fd-footer-copy">&copy; <span class="fd-footer-year">2026</span> <span class="fd-ph">[YOUR BUSINESS NAME]</span>. All rights reserved.</p>
+  </div>
+  <p class="fd-footer-legal">Financial Diary is a calculator and a record-keeping tool. It isn't financial advice, and projections are estimates based on the figures and growth rates you enter — real returns, rates and circumstances vary.</p>
+</footer>
+</div>
+
+<script>
+(function () {
+  var yearEls = document.querySelectorAll('.fd-footer-year');
+  var year = String(new Date().getFullYear());
+  for (var i = 0; i < yearEls.length; i++) yearEls[i].textContent = year;
+})();
+</script>
+
+<script>
+(function () {
+  const $ = (id) => document.getElementById(id);
+
+  // Deliberately NO auth gate on this page. A prospective customer needs it
+  // before they pay, and someone locked out of their account needs it most of
+  // all — so it must render for a signed-out visitor exactly as it does for a
+  // member. A session, if there happens to be one, only pre-fills the form.
+  let sb = null;
+  try {
+    const cfg = window.FINANCIAL_DIARY_CONFIG || {};
+    if (window.supabase && cfg.SUPABASE_URL && cfg.SUPABASE_ANON_KEY) {
+      sb = window.supabase.createClient(cfg.SUPABASE_URL, cfg.SUPABASE_ANON_KEY);
+    }
+  } catch (err) {
+    console.error('contact: could not start the Supabase client:', err);
+  }
+
+  let currentUserId = null;
+
+  // ---------------- Validation ----------------
+  // The limits below mirror the CHECK constraints on public.contact_messages
+  // (see supabase-update-contact.sql) so a long message gets a friendly note
+  // here rather than a database rejection after the round trip.
+  const LIMITS = { name: 100, email: 255, topic: 60, message: 5000 };
+  const MIN_MESSAGE = 10;
+
+  // Pragmatic, not RFC-complete: something before the @, something after it,
+  // a dot, and a couple of letters — with no spaces anywhere.
+  const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[A-Za-z]{2,}$/;
+
+  const FIELDS = ['name', 'email', 'topic', 'message'];
+
+  function inputFor(field) { return $('fd-c-' + field); }
+  function errorFor(field) { return $('fd-c-' + field + '-err'); }
+
+  function setFieldError(field, message) {
+    const input = inputFor(field);
+    const err = errorFor(field);
+    if (message) {
+      input.classList.add('is-invalid');
+      input.setAttribute('aria-invalid', 'true');
+      err.textContent = message;
+    } else {
+      input.classList.remove('is-invalid');
+      input.removeAttribute('aria-invalid');
+      err.textContent = '';
+    }
+  }
+
+  function clearAllErrors() {
+    FIELDS.forEach((f) => setFieldError(f, ''));
+    $('fd-form-error').style.display = 'none';
+    $('fd-form-error').textContent = '';
+  }
+
+  function validate() {
+    const values = {
+      name: (inputFor('name').value || '').trim(),
+      email: (inputFor('email').value || '').trim(),
+      topic: inputFor('topic').value || '',
+      message: (inputFor('message').value || '').trim(),
+    };
+    const errors = {};
+
+    if (!values.name) errors.name = 'Please tell us your name, so we know who we’re replying to.';
+    else if (values.name.length > LIMITS.name) errors.name = 'That’s longer than we can store — please keep it to ' + LIMITS.name + ' characters.';
+
+    if (!values.email) errors.email = 'We need an email address, or there’s nowhere to send the reply.';
+    else if (values.email.length > LIMITS.email) errors.email = 'That address is longer than ' + LIMITS.email + ' characters — please check it.';
+    else if (!EMAIL_RE.test(values.email)) errors.email = 'That doesn’t look like an email address — check for a typo (it needs an @ and a full stop).';
+
+    if (!values.topic) errors.topic = 'Please pick what this is about — it decides how quickly it gets to the right place.';
+    else if (values.topic.length > LIMITS.topic) errors.topic = 'That topic is too long.';
+
+    if (!values.message) errors.message = 'Please write your message.';
+    else if (values.message.length < MIN_MESSAGE) errors.message = 'A little more detail, please — at least ' + MIN_MESSAGE + ' characters.';
+    else if (values.message.length > LIMITS.message) errors.message = 'That’s ' + values.message.length.toLocaleString('en-GB') + ' characters and the limit is ' + LIMITS.message.toLocaleString('en-GB') + '. Please trim it, or send the rest in a second message.';
+
+    return { values, errors };
+  }
+
+  // ---------------- Character counter ----------------
+  function updateCount() {
+    const len = (inputFor('message').value || '').length;
+    const el = $('fd-c-count');
+    el.textContent = len.toLocaleString('en-GB');
+    el.classList.toggle('is-over', len > LIMITS.message);
+  }
+  inputFor('message').addEventListener('input', updateCount);
+
+  // Clear a field's error as soon as the person starts fixing it.
+  FIELDS.forEach((field) => {
+    const el = inputFor(field);
+    const eventName = el.tagName === 'SELECT' ? 'change' : 'input';
+    el.addEventListener(eventName, () => {
+      if (el.classList.contains('is-invalid')) setFieldError(field, '');
+    });
+  });
+
+  // ---------------- Submit ----------------
+  async function handleSubmit(evt) {
+    evt.preventDefault();
+    clearAllErrors();
+
+    const { values, errors } = validate();
+    const bad = FIELDS.filter((f) => errors[f]);
+    if (bad.length) {
+      bad.forEach((f) => setFieldError(f, errors[f]));
+      const first = inputFor(bad[0]);
+      first.focus();
+      if (first.scrollIntoView) first.scrollIntoView({ block: 'center' });
+      return;
+    }
+
+    const btn = $('fd-c-submit');
+    const originalLabel = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = 'Sending…';
+
+    try {
+      if (!sb) throw new Error('The message service could not be reached from this browser.');
+
+      // IMPORTANT: a plain .insert() and nothing else.
+      //
+      // contact_messages has an INSERT policy open to everyone and deliberately
+      // NO SELECT policy at all, so that nobody can read other people's
+      // messages and email addresses out of the public API. Chaining .select()
+      // here (or anything that asks PostgREST to return the new row) would be
+      // refused by row-level security and this would fail on every send, even
+      // though the row had gone in. So: insert, check the error, and never read
+      // back. The owner reads messages in the Supabase dashboard.
+      const { error } = await sb.from('contact_messages').insert({
+        user_id: currentUserId,
+        name: values.name,
+        email: values.email,
+        topic: values.topic,
+        message: values.message,
+        page_url: window.location.href,
+      });
+
+      if (error) throw new Error(error.message || 'The message could not be saved.');
+
+      $('fd-form-card').style.display = 'none';
+      const sent = $('fd-sent');
+      sent.style.display = 'block';
+      sent.focus();
+      if (sent.scrollIntoView) sent.scrollIntoView({ block: 'start' });
+    } catch (err) {
+      console.error('contact: send failed:', err);
+      const box = $('fd-form-error');
+      box.textContent = 'Sorry — that didn’t send (' + (err.message || 'unknown error') + '). Please try once more in a moment. If it still won’t go through, email us directly at ';
+      const ph = document.createElement('span');
+      ph.className = 'fd-ph';
+      ph.textContent = '[YOUR CONTACT EMAIL]';
+      box.appendChild(ph);
+      box.appendChild(document.createTextNode(' and we’ll pick it up there.'));
+      box.style.display = 'block';
+    } finally {
+      btn.disabled = false;
+      btn.textContent = originalLabel;
+    }
+  }
+
+  $('fd-contact-form').addEventListener('submit', handleSubmit);
+
+  $('fd-send-another').addEventListener('click', () => {
+    inputFor('topic').value = '';
+    inputFor('message').value = '';
+    updateCount();
+    clearAllErrors();
+    $('fd-sent').style.display = 'none';
+    $('fd-form-card').style.display = 'block';
+    inputFor('topic').focus();
+  });
+
+  // ---------------- Quiet pre-fill for signed-in members ----------------
+  async function prefillFromSession() {
+    if (!sb) return;
+    try {
+      const { data } = await sb.auth.getSession();
+      const session = data && data.session;
+      if (!session || !session.user) return;
+      currentUserId = session.user.id;
+      const name = (session.user.user_metadata && session.user.user_metadata.name) || '';
+      if (name && !inputFor('name').value) inputFor('name').value = name;
+      if (session.user.email && !inputFor('email').value) inputFor('email').value = session.user.email;
+      $('fd-prefill-note').style.display = 'block';
+      $('fd-back-link').textContent = '← Back to dashboard';
+    } catch (err) {
+      // No session, or the client can't reach Supabase. Either way the form
+      // still works for a visitor — that's the whole point of this page.
+      console.error('contact: session lookup failed:', err);
+    }
+  }
+
+  updateCount();
+  prefillFromSession();
+})();
+</script>
+</body>
+</html>
