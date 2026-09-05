@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap">
+<title>Terms of Use — Financial Diary</title>
+<style>
+  :root {
+    color-scheme: light;
+    --font-sans: 'Inter', system-ui, -apple-system, "Segoe UI", Roboto,
+                 "Helvetica Neue", Arial, sans-serif;
+    --fs-display: 42px;
+    --fs-h1:      30px;
+    --fs-h2:      21px;
+    --fs-h3:      17px;
+    --fs-lg:      15px;
+    --fs-md:      14px;
+    --fs-sm:      13px;
+    --fs-xs:      12px;
+    --fs-2xs:     11px;
+    --sp-1: 4px;  --sp-2: 8px;  --sp-3: 12px; --sp-4: 16px; --sp-5: 20px;
+    --sp-6: 24px; --sp-7: 32px; --sp-8: 44px; --sp-9: 64px;
+    --r-sm: 8px; --r-md: 10px; --r-lg: 14px; --r-pill: 999px;
+    --shadow-1: 0 1px 2px rgba(11,11,11,0.04);
+    --shadow-2: 0 6px 18px rgba(11,11,11,0.07);
+    --ease: cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: var(--font-sans);
+    font-size: var(--fs-lg);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    background: var(--page);
+    color: var(--text-primary);
+  }
+  .fd-root h1, .fd-root h2, .fd-root h3, .fd-root h4 {
+    line-height: 1.2; letter-spacing: -0.015em; font-weight: 700;
+    color: var(--text-primary);
+  }
+  :focus-visible { outline: 2px solid var(--mortgage); outline-offset: 2px; }
+
+  .fd-root {
+    --page:           #ffffff;
+    --surface-1:      #fafaf9;
+    --surface-2:      #f0efec;
+    --text-primary:   #0b0b0b;
+    --text-secondary: #52514e;
+    --text-muted:     #6b6862;
+    --ink-hover:      #2b2a27;
+    --gridline:       #e4e3dd;
+    --border:         rgba(11,11,11,0.12);
+    --navy:      #1d3557;
+    --on-navy:   #cfe0f5;
+    --navy-line: rgba(29,53,87,0.22);
+    --cta:       #166534;
+    --cta-hover: #14532d;
+    --on-cta:    #ffffff;
+    --mortgage:  #2a78d6;
+    --good:      #0ca30c;
+    --bad:       #b3261e;
+    background: var(--page);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .fd-wrap {
+    max-width: 960px; margin: 0 auto; width: 100%;
+    padding: var(--sp-7) var(--sp-5) var(--sp-9);
+    flex: 1 0 auto;
+  }
+  @media (max-width: 460px) { .fd-wrap { padding: var(--sp-6) var(--sp-4) var(--sp-8); } }
+
+  /* ---------- Nav / brand ---------- */
+  .fd-nav {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: var(--sp-4); flex-wrap: wrap;
+    margin-bottom: var(--sp-7); padding-bottom: var(--sp-4);
+    border-bottom: 1px solid var(--navy-line);
+  }
+  .fd-brand {
+    display: flex; align-items: center; gap: 10px;
+    font-weight: 700; font-size: var(--fs-h3); letter-spacing: -0.017em;
+    color: var(--navy);
+  }
+  .fd-brand-mark {
+    width: 28px; height: 28px; border-radius: 8px;
+    background: linear-gradient(135deg, var(--navy), var(--mortgage));
+  }
+  .fd-nav-actions { display: flex; align-items: center; gap: 10px; }
+  .fd-back-link {
+    font-size: var(--fs-sm); font-weight: 600; color: var(--text-secondary); text-decoration: none;
+    padding: 6px 4px; letter-spacing: -0.004em;
+    transition: color .15s var(--ease);
+  }
+  .fd-back-link:hover { color: var(--text-primary); }
+
+  h1.fd-page-title {
+    font-size: 26px; margin: 0 0 var(--sp-2); letter-spacing: -0.024em;
+    line-height: 1.15; font-weight: 700; color: var(--navy);
+  }
+  .fd-page-sub {
+    font-size: var(--fs-lg); color: var(--text-secondary); margin: 0 0 var(--sp-2);
+    line-height: 1.6; max-width: 62ch;
+  }
+  .fd-updated { font-size: var(--fs-xs); color: var(--text-muted); margin: 0 0 var(--sp-7); }
+
+  /* ---------- Legal prose ---------- */
+  .fd-legal { max-width: 70ch; }
+  .fd-legal h2 {
+    font-size: var(--fs-h2); color: var(--navy); letter-spacing: -0.021em;
+    margin: var(--sp-8) 0 var(--sp-3); padding-top: var(--sp-4);
+    border-top: 1px solid var(--gridline); scroll-margin-top: var(--sp-4);
+  }
+  .fd-legal h2:first-child { margin-top: 0; padding-top: 0; border-top: 0; }
+  .fd-legal h3 {
+    font-size: var(--fs-h3); color: var(--text-primary); letter-spacing: -0.016em;
+    margin: var(--sp-6) 0 var(--sp-2);
+  }
+  .fd-legal p { font-size: var(--fs-md); color: var(--text-secondary); line-height: 1.7; margin: 0 0 var(--sp-4); text-wrap: pretty; }
+  .fd-legal ul, .fd-legal ol { margin: 0 0 var(--sp-4); padding-left: 1.25em; }
+  .fd-legal li { font-size: var(--fs-md); color: var(--text-secondary); line-height: 1.7; margin-bottom: var(--sp-2); }
+  .fd-legal a { color: var(--navy); font-weight: 600; }
+  .fd-legal strong { color: var(--text-primary); }
+
+  .fd-toc {
+    background: var(--surface-1); border: 1px solid var(--border); border-radius: var(--r-lg);
+    padding: var(--sp-5) var(--sp-6); margin-bottom: var(--sp-8); box-shadow: var(--shadow-1);
+  }
+  .fd-toc h2 {
+    font-size: var(--fs-2xs); font-weight: 700; letter-spacing: 0.1em;
+    text-transform: uppercase; color: var(--navy);
+    margin: 0 0 var(--sp-3); padding: 0; border: 0;
+  }
+  .fd-toc ol { margin: 0; padding-left: 1.35em; columns: 2; column-gap: var(--sp-7); }
+  @media (max-width: 620px) { .fd-toc ol { columns: 1; } .fd-toc { padding: var(--sp-4); } }
+  .fd-toc li { font-size: var(--fs-sm); line-height: 1.6; margin-bottom: var(--sp-1); break-inside: avoid; }
+  .fd-toc a { color: var(--text-secondary); font-weight: 600; text-decoration: none; }
+  .fd-toc a:hover { color: var(--navy); text-decoration: underline; }
+
+  /* The single most important thing on this page gets its own frame. */
+  .fd-callout {
+    background: var(--surface-2); border: 1px solid var(--border);
+    border-left: 3px solid var(--navy); border-radius: var(--r-sm);
+    padding: var(--sp-4) var(--sp-5); margin: 0 0 var(--sp-5);
+  }
+  .fd-callout p { margin-bottom: var(--sp-3); }
+  .fd-callout p:last-child { margin-bottom: 0; }
+  .fd-callout-strong { border-left-color: var(--bad); }
+
+  /* ---------- Placeholders the owner must fill in ---------- */
+  .fd-ph {
+    background: #fff3cd; color: #6b4e00; border: 1px dashed #a97b00;
+    border-radius: 4px; padding: 0 5px; font-weight: 600; font-style: normal;
+  }
+  .fd-ph-note {
+    background: #fff8e1; border: 1px dashed #a97b00; border-radius: var(--r-md);
+    padding: var(--sp-4) var(--sp-5); margin: 0 0 var(--sp-7); color: #6b4e00;
+  }
+  .fd-ph-note p { font-size: var(--fs-sm); line-height: 1.65; margin: 0; color: #6b4e00; }
+
+  /* ---------- Site footer ---------- */
+  .fd-site-footer {
+    flex: none; border-top: 1px solid var(--navy-line); background: var(--surface-1);
+  }
+  .fd-site-footer-inner {
+    max-width: 960px; margin: 0 auto; padding: var(--sp-6) var(--sp-5) var(--sp-4);
+    display: flex; flex-wrap: wrap; align-items: baseline;
+    justify-content: space-between; gap: var(--sp-3) var(--sp-6);
+  }
+  .fd-footer-links { display: flex; flex-wrap: wrap; gap: var(--sp-2) var(--sp-5); }
+  .fd-footer-links a {
+    font-size: var(--fs-sm); font-weight: 600; color: var(--text-secondary);
+    text-decoration: none; transition: color .15s var(--ease);
+  }
+  .fd-footer-links a:hover { color: var(--navy); text-decoration: underline; }
+  .fd-footer-links a[aria-current="page"] { color: var(--navy); }
+  .fd-footer-copy { font-size: var(--fs-xs); color: var(--text-muted); margin: 0; }
+  .fd-footer-legal {
+    max-width: 960px; margin: 0 auto;
+    padding: 0 var(--sp-5) var(--sp-6);
+    font-size: var(--fs-xs); color: var(--text-muted); line-height: 1.6;
+  }
+  @media (max-width: 460px) {
+    .fd-site-footer-inner { padding: var(--sp-5) var(--sp-4) var(--sp-3); }
+    .fd-footer-legal { padding: 0 var(--sp-4) var(--sp-5); }
+  }
+</style>
+</head>
+<body>
+<div class="fd-root">
+<div class="fd-wrap">
+
+  <div class="fd-nav">
+    <div class="fd-brand"><span class="fd-brand-mark"></span> Financial Diary</div>
+    <div class="fd-nav-actions">
+      <a class="fd-back-link" href="index.html">&larr; Back to Financial Diary</a>
+    </div>
+  </div>
+
+  <h1 class="fd-page-title">Terms of Use</h1>
+  <p class="fd-page-sub">The agreement between you and us when you use Financial Diary. It's short, and it's written to be understood rather than to be impressive.</p>
+  <p class="fd-updated">Last updated: <span class="fd-ph">[DATE YOU PUBLISH THIS]</span></p>
+
+  <div class="fd-ph-note">
+    <p><strong>Before this goes live:</strong> every highlighted box below is something only you can fill in — your business name, address, contact email, and the jurisdiction whose law applies. Replace the text inside each one (and delete the surrounding <code>&lt;span class="fd-ph"&gt;…&lt;/span&gt;</code> tags so the highlight disappears), then delete this note itself along with the <code>.fd-ph-note</code> block in the stylesheet.</p>
+  </div>
+
+  <div class="fd-legal">
+
+    <div class="fd-toc">
+      <h2>On this page</h2>
+      <ol>
+        <li><a href="#agreement">Who this agreement is with</a></li>
+        <li><a href="#what">What Financial Diary is</a></li>
+        <li><a href="#advice">What it isn't: not financial advice</a></li>
+        <li><a href="#projections">Projections are estimates</a></li>
+        <li><a href="#account">Your account</a></li>
+        <li><a href="#payment">The £5 payment</a></li>
+        <li><a href="#refunds">Cancelling and refunds</a></li>
+        <li><a href="#yourdata">Your figures belong to you</a></li>
+        <li><a href="#use">Acceptable use</a></li>
+        <li><a href="#availability">Availability and changes</a></li>
+        <li><a href="#liability">Our liability to you</a></li>
+        <li><a href="#ending">Ending the agreement</a></li>
+        <li><a href="#changes">Changes to these terms</a></li>
+        <li><a href="#law">Governing law</a></li>
+        <li><a href="#contact">Getting in touch</a></li>
+      </ol>
+    </div>
+
+    <h2 id="agreement">1. Who this agreement is with</h2>
+    <p>Financial Diary (&ldquo;the service&rdquo;, &ldquo;we&rdquo;, &ldquo;us&rdquo;) is operated by <span class="fd-ph">[YOUR BUSINESS NAME]</span><span class="fd-ph">[IF A LIMITED COMPANY: , a company registered in England and Wales, number YOUR COMPANY NUMBER — otherwise delete this]</span>, of <span class="fd-ph">[YOUR ADDRESS]</span>.</p>
+    <p>By creating an account or using the site, you agree to these terms. If you don't agree with them, please don't use the service — and if you've already paid and then read something here you're unhappy with, see <a href="#refunds">cancelling and refunds</a>.</p>
+    <p>These terms sit alongside our <a href="privacy.html">Privacy Policy</a>, which explains what we do with your data.</p>
+
+    <h2 id="what">2. What Financial Diary is</h2>
+    <p>Financial Diary is two things: <strong>a set of calculators</strong>, and <strong>a record</strong>.</p>
+    <p>The calculators take figures you type in — a mortgage balance and rate, a pension pot and contribution, an investment sum and an assumed growth rate, your savings — and do arithmetic on them, showing the result as a number and a chart. The record is your diary: whenever you press &ldquo;Log this to my diary&rdquo;, a dated snapshot of what you were looking at is saved to your account, so you can come back in six months and see what's changed. The Tracker and Goal Tracker pages do the same thing for check-ins you log over time.</p>
+    <p>That's the whole of it. There is no bank connection, no product comparison, no recommendation engine, and nothing that acts on your behalf. You type figures in; it does maths on them; it remembers what you typed.</p>
+
+    <h2 id="advice">3. What it isn't: this is not financial advice</h2>
+    <div class="fd-callout fd-callout-strong">
+      <p><strong>Financial Diary does not give financial advice, and nothing on this site is a personal recommendation.</strong> We are not authorised or regulated by the Financial Conduct Authority, and we do not carry out any regulated activity.</p>
+      <p>The service knows nothing about your circumstances, your tax position, your health, your dependants, your job security or your appetite for risk. It cannot tell you whether to overpay your mortgage, how much to put in a pension, which investments to hold, or whether any of it is suitable for you — and it does not try to.</p>
+      <p>If you want advice on what to actually do with your money, speak to a regulated financial adviser. You can check whether someone is authorised on the FCA's register at <a href="https://register.fca.org.uk" rel="noopener noreferrer" target="_blank">register.fca.org.uk</a>.</p>
+    </div>
+    <p>Where a page mentions something like an Early Repayment Charge, a lender's overpayment cap or the difference between repayment and interest-only, that's general information to stop an obvious mistake — not advice about your particular mortgage. Check your own paperwork and ask your lender.</p>
+
+    <h2 id="projections">4. Projections are estimates, not forecasts</h2>
+    <p>This matters more than anything else on the page, so it's worth being blunt about it.</p>
+    <p>Every forward-looking figure the site shows you — a pension pot at 67, a net worth in twenty years, an investment total, the interest saved by overpaying — is <strong>arithmetic performed on assumptions that you chose</strong>. The growth rates, the interest rates, the contribution amounts, the term lengths: all of them are figures you typed into a box or dragged on a slider. Change one of them and the answer changes with it.</p>
+    <p>Consequently:</p>
+    <ul>
+      <li>The projections are <strong>not a prediction</strong> of what your money will actually do, and they are not a promise, guarantee or forecast of any outcome.</li>
+      <li>They assume conditions that stay steady for decades. Real interest rates move, real investments fall as well as rise, real inflation erodes real money, real tax rules change, and real lives take turns nobody modelled.</li>
+      <li>The mortgage tools assume a capital repayment mortgage at a single fixed rate for the whole term. Most real mortgages don't work like that, and a lender's own illustration is the figure that counts.</li>
+      <li>They take no account of tax, charges, platform fees, adviser fees or product-specific rules unless you have built those into the figures you entered yourself.</li>
+      <li>Anything wrong that you type in comes out the other end looking just as confident as anything right. The site cannot tell the difference.</li>
+    </ul>
+    <p>Please don't make an irreversible financial decision on the strength of a number this site produced without checking it against the actual paperwork and, where it matters, a professional.</p>
+
+    <h2 id="account">5. Your account</h2>
+    <p>You need an account to use the tools. To create one you give a name, an email address and a password. You must be at least 18, and the details you give must be your own and accurate.</p>
+    <p>Keep your password to yourself — you're responsible for what happens on your account, and anyone who has your password can see every figure in it. If you think someone else has got in, change your password and <a href="contact.html">tell us</a>.</p>
+    <p>One account is for one person. Please don't share a login around.</p>
+    <p>We can't read your password: it's stored as a one-way hash, so if you forget it the only route back in is the reset link on the log-in screen. That's a design decision, not an inconvenience we can override.</p>
+
+    <h2 id="payment">6. The £5 payment</h2>
+    <p><strong>What it costs:</strong> a single payment of £5, in pounds sterling, including any VAT that applies.</p>
+    <p><strong>What it buys:</strong> full access to your account and everything in it — all seven dashboard tools (Mortgage, Retirement, Investments, Cash at hand, Net Worth, Goal Planner and Tracker), the two extra pages (Pay Off Early and Goal Tracker), an unlimited dated diary, the check-in charts, and the PDF report. There is no higher tier and nothing else to buy.</p>
+    <p><strong>What it isn't:</strong> a subscription. It's a one-off charge. Nothing renews, nothing bills you again, and no card is kept on file by us to bill — we never receive your card details in the first place (see the <a href="privacy.html#cards">Privacy Policy</a>).</p>
+    <p><strong>How it's taken:</strong> on Stripe's hosted checkout page. Your card details go to Stripe; the site is told only that the payment succeeded, and unlocks your account on that basis, normally within a few seconds.</p>
+    <p><strong>For how long:</strong> access isn't time-limited, but we're not promising to run this website forever. See <a href="#availability">availability and changes</a> — and if we do stop, section 12 says what happens to your data.</p>
+
+    <h2 id="refunds">7. Cancelling and refunds</h2>
+    <p>Because you're buying digital content online, the Consumer Contracts Regulations 2013 normally give you <strong>14 days from purchase to cancel and get your money back</strong>. Some services ask you to waive that right in exchange for immediate access; <strong>we don't ask you to waive anything</strong>, so if you want to cancel within 14 days, you can — just tell us, and you'll be refunded.</p>
+    <p>Beyond that, we'd rather have a happy person than a fiver: if the service didn't do what you expected, ask, and a refund will be considered within <span class="fd-ph">[YOUR REFUND WINDOW — e.g. 30 days, or "at our discretion"]</span> of purchase.</p>
+    <p>To ask for one, use the <a href="contact.html#refund">contact form</a> with the email you paid with and roughly when you paid. Refunds are made back through Stripe to the card you used — there's no other route — and banks typically take five to ten working days to show it.</p>
+    <p>Refunding closes your access. Your data isn't deleted automatically at that point, so say if you'd also like the account removed.</p>
+    <p>None of this affects your statutory rights under the Consumer Rights Act 2015, which entitle you to a remedy if the service isn't as described, isn't provided with reasonable care and skill, or isn't fit for a purpose you told us about.</p>
+
+    <h2 id="yourdata">8. Your figures belong to you</h2>
+    <p>Everything you type in is yours. We don't claim ownership of it, we don't sell it, we don't publish it, and we don't use it to train anything. The only permission you give us is the obvious one: to store it, show it back to you, and do the arithmetic you asked for.</p>
+    <p>You can take a copy at any time — the dashboard generates a PDF report — and you can ask for your data in a portable file, or ask us to delete it. The <a href="privacy.html#rights">Privacy Policy</a> covers all of that.</p>
+    <p>The site itself — the code, the design, the wording and the calculators — belongs to us. You may use it for your own personal financial planning. Please don't copy it, resell it, or pass off any part of it as your own.</p>
+
+    <h2 id="use">9. Acceptable use</h2>
+    <p>The short version: use it for your own money, and don't attack it. In detail, you agree not to:</p>
+    <ul>
+      <li>Try to get at anyone else's account or data, or to get round the security rules that keep accounts separate.</li>
+      <li>Probe, scan, overload or otherwise test the site or its providers for weaknesses without written permission. (Found something? Please <a href="contact.html">tell us</a> — that's a favour, not an offence.)</li>
+      <li>Scrape, mirror, resell, white-label or rebrand the service, or use it to build a competing product.</li>
+      <li>Automate access — bots, scripts, mass account creation — or share a single account with other people.</li>
+      <li>Send anything unlawful, abusive, threatening or deliberately misleading through the contact form, or use it to send bulk or marketing messages.</li>
+      <li>Upload or enter anything that infringes someone else's rights, or that you have no right to hold.</li>
+      <li>Interfere with the site's operation, or with anyone else's use of it.</li>
+    </ul>
+    <p>If you break these rules we may suspend or close your account, and, where something unlawful has happened, report it.</p>
+
+    <h2 id="availability">10. Availability and changes</h2>
+    <p>We'd like the site to be available all the time, but we can't promise it will be. It depends on services we don't control (Supabase, Stripe, Vercel, and the networks in between), and it occasionally needs maintenance. It's provided on a reasonable-endeavours basis, without any guaranteed uptime.</p>
+    <p>We may change, add or remove tools and features as the service develops. We won't make a change that takes away the core of what you paid for — the calculators and your diary — without good reason.</p>
+    <p>If we ever decide to shut the service down, we'll give account holders reasonable notice by email and a fair opportunity to download their data before it goes.</p>
+
+    <h2 id="liability">11. Our liability to you</h2>
+    <p>Some liability cannot be excluded by law, and we don't try to: nothing in these terms limits our liability for death or personal injury caused by our negligence, for fraud or fraudulent misrepresentation, or for anything else that can't lawfully be limited. Your statutory rights as a consumer stand whatever this section says.</p>
+    <p>Subject to that:</p>
+    <ul>
+      <li>The service is a calculator and a record. <strong>You are responsible for the financial decisions you make</strong>, and we are not liable for a decision you took on the basis of a projection, a total or a chart the site produced.</li>
+      <li>We're not liable for losses caused by figures or assumptions you entered incorrectly, or by growth rates that didn't turn out the way you assumed.</li>
+      <li>We're not liable for indirect or consequential loss, for loss of profit, investment returns, opportunity or anticipated savings, or for losses that weren't reasonably foreseeable when you signed up.</li>
+      <li>We're not liable for failures of third-party services we depend on, or for anything outside our reasonable control.</li>
+      <li>Where we are liable, <strong>our total liability to you is limited to the amount you paid us</strong> — that is, £5.</li>
+    </ul>
+    <p>That last limit is not us being cheeky about the price. It's the honest position: five pounds buys a spreadsheet with a memory, and it cannot buy insurance against your financial decisions.</p>
+
+    <h2 id="ending">12. Ending the agreement</h2>
+    <p><strong>You can leave whenever you like.</strong> Ask us through the <a href="contact.html">contact form</a> and your account and everything in it will be deleted. Deletion is permanent — there's no archived copy to restore — so download your PDF report first if you want a record. Closing your account after the cancellation period doesn't automatically mean a refund; see <a href="#refunds">section 7</a>.</p>
+    <p>We may suspend or close an account if these terms are seriously or repeatedly broken, if the account is being used unlawfully, or if we're legally required to. Except where it would be inappropriate — fraud, for instance — we'll tell you why and give you a chance to put it right first. If we close your account for a reason that isn't your fault, we'll refund you.</p>
+
+    <h2 id="changes">13. Changes to these terms</h2>
+    <p>We may update these terms from time to time — to reflect a change in the service, or in the law. The current version always lives on this page with its date at the top. If a change materially affects your rights, we'll email account holders rather than change the page quietly, and you'll be free to close your account if you don't accept it.</p>
+
+    <h2 id="law">14. Governing law</h2>
+    <p>These terms, and any dispute arising out of them, are governed by the law of <span class="fd-ph">[JURISDICTION — most likely England and Wales; confirm before publishing]</span>, and the courts of <span class="fd-ph">[JURISDICTION — as above]</span> have exclusive jurisdiction.</p>
+    <p>If you live in Scotland or Northern Ireland, you keep the right to bring proceedings in your own country's courts — that protection can't be taken away from a consumer by a clause like this one.</p>
+    <p>If any part of these terms turns out to be unenforceable, the rest carries on as normal.</p>
+
+    <h2 id="contact">15. Getting in touch</h2>
+    <p>Questions about these terms, or anything else, go to the <a href="contact.html">contact form</a>, or by email to <span class="fd-ph">[YOUR CONTACT EMAIL]</span>. There's a person at the other end.</p>
+
+  </div>
+
+</div>
+
+<footer class="fd-site-footer">
+  <div class="fd-site-footer-inner">
+    <nav class="fd-footer-links" aria-label="Footer">
+      <a href="contact.html">Contact</a>
+      <a href="privacy.html">Privacy Policy</a>
+      <a href="terms.html" aria-current="page">Terms of Use</a>
+    </nav>
+    <p class="fd-footer-copy">&copy; <span class="fd-footer-year">2026</span> <span class="fd-ph">[YOUR BUSINESS NAME]</span>. All rights reserved.</p>
+  </div>
+  <p class="fd-footer-legal">Financial Diary is a calculator and a record-keeping tool. It isn't financial advice, and projections are estimates based on the figures and growth rates you enter — real returns, rates and circumstances vary.</p>
+</footer>
+</div>
+
+<script>
+(function () {
+  var yearEls = document.querySelectorAll('.fd-footer-year');
+  var year = String(new Date().getFullYear());
+  for (var i = 0; i < yearEls.length; i++) yearEls[i].textContent = year;
+})();
+</script>
+</body>
+</html>
