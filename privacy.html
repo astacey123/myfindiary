@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap">
+<title>Privacy Policy — Financial Diary</title>
+<style>
+  :root {
+    color-scheme: light;
+    --font-sans: 'Inter', system-ui, -apple-system, "Segoe UI", Roboto,
+                 "Helvetica Neue", Arial, sans-serif;
+    --fs-display: 42px;
+    --fs-h1:      30px;
+    --fs-h2:      21px;
+    --fs-h3:      17px;
+    --fs-lg:      15px;
+    --fs-md:      14px;
+    --fs-sm:      13px;
+    --fs-xs:      12px;
+    --fs-2xs:     11px;
+    --sp-1: 4px;  --sp-2: 8px;  --sp-3: 12px; --sp-4: 16px; --sp-5: 20px;
+    --sp-6: 24px; --sp-7: 32px; --sp-8: 44px; --sp-9: 64px;
+    --r-sm: 8px; --r-md: 10px; --r-lg: 14px; --r-pill: 999px;
+    --shadow-1: 0 1px 2px rgba(11,11,11,0.04);
+    --shadow-2: 0 6px 18px rgba(11,11,11,0.07);
+    --ease: cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: var(--font-sans);
+    font-size: var(--fs-lg);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    background: var(--page);
+    color: var(--text-primary);
+  }
+  .fd-root h1, .fd-root h2, .fd-root h3, .fd-root h4 {
+    line-height: 1.2; letter-spacing: -0.015em; font-weight: 700;
+    color: var(--text-primary);
+  }
+  :focus-visible { outline: 2px solid var(--mortgage); outline-offset: 2px; }
+
+  .fd-root {
+    --page:           #ffffff;
+    --surface-1:      #fafaf9;
+    --surface-2:      #f0efec;
+    --text-primary:   #0b0b0b;
+    --text-secondary: #52514e;
+    --text-muted:     #6b6862;
+    --ink-hover:      #2b2a27;
+    --gridline:       #e4e3dd;
+    --border:         rgba(11,11,11,0.12);
+    --navy:      #1d3557;
+    --on-navy:   #cfe0f5;
+    --navy-line: rgba(29,53,87,0.22);
+    --cta:       #166534;
+    --cta-hover: #14532d;
+    --on-cta:    #ffffff;
+    --mortgage:  #2a78d6;
+    --good:      #0ca30c;
+    --bad:       #b3261e;
+    background: var(--page);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .fd-wrap {
+    max-width: 960px; margin: 0 auto; width: 100%;
+    padding: var(--sp-7) var(--sp-5) var(--sp-9);
+    flex: 1 0 auto;
+  }
+  @media (max-width: 460px) { .fd-wrap { padding: var(--sp-6) var(--sp-4) var(--sp-8); } }
+
+  /* ---------- Nav / brand ---------- */
+  .fd-nav {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: var(--sp-4); flex-wrap: wrap;
+    margin-bottom: var(--sp-7); padding-bottom: var(--sp-4);
+    border-bottom: 1px solid var(--navy-line);
+  }
+  .fd-brand {
+    display: flex; align-items: center; gap: 10px;
+    font-weight: 700; font-size: var(--fs-h3); letter-spacing: -0.017em;
+    color: var(--navy);
+  }
+  .fd-brand-mark {
+    width: 28px; height: 28px; border-radius: 8px;
+    background: linear-gradient(135deg, var(--navy), var(--mortgage));
+  }
+  .fd-nav-actions { display: flex; align-items: center; gap: 10px; }
+  .fd-back-link {
+    font-size: var(--fs-sm); font-weight: 600; color: var(--text-secondary); text-decoration: none;
+    padding: 6px 4px; letter-spacing: -0.004em;
+    transition: color .15s var(--ease);
+  }
+  .fd-back-link:hover { color: var(--text-primary); }
+
+  h1.fd-page-title {
+    font-size: 26px; margin: 0 0 var(--sp-2); letter-spacing: -0.024em;
+    line-height: 1.15; font-weight: 700; color: var(--navy);
+  }
+  .fd-page-sub {
+    font-size: var(--fs-lg); color: var(--text-secondary); margin: 0 0 var(--sp-2);
+    line-height: 1.6; max-width: 62ch;
+  }
+  .fd-updated { font-size: var(--fs-xs); color: var(--text-muted); margin: 0 0 var(--sp-7); }
+
+  /* ---------- Legal prose ---------- */
+  .fd-legal { max-width: 70ch; }
+  .fd-legal h2 {
+    font-size: var(--fs-h2); color: var(--navy); letter-spacing: -0.021em;
+    margin: var(--sp-8) 0 var(--sp-3); padding-top: var(--sp-4);
+    border-top: 1px solid var(--gridline); scroll-margin-top: var(--sp-4);
+  }
+  .fd-legal h2:first-child { margin-top: 0; padding-top: 0; border-top: 0; }
+  .fd-legal h3 {
+    font-size: var(--fs-h3); color: var(--text-primary); letter-spacing: -0.016em;
+    margin: var(--sp-6) 0 var(--sp-2);
+  }
+  .fd-legal p { font-size: var(--fs-md); color: var(--text-secondary); line-height: 1.7; margin: 0 0 var(--sp-4); text-wrap: pretty; }
+  .fd-legal ul, .fd-legal ol { margin: 0 0 var(--sp-4); padding-left: 1.25em; }
+  .fd-legal li { font-size: var(--fs-md); color: var(--text-secondary); line-height: 1.7; margin-bottom: var(--sp-2); }
+  .fd-legal li > strong { color: var(--text-primary); }
+  .fd-legal a { color: var(--navy); font-weight: 600; }
+  .fd-legal strong { color: var(--text-primary); }
+
+  /* Contents list at the top — long documents need a way in. */
+  .fd-toc {
+    background: var(--surface-1); border: 1px solid var(--border); border-radius: var(--r-lg);
+    padding: var(--sp-5) var(--sp-6); margin-bottom: var(--sp-8); box-shadow: var(--shadow-1);
+  }
+  .fd-toc h2 {
+    font-size: var(--fs-2xs); font-weight: 700; letter-spacing: 0.1em;
+    text-transform: uppercase; color: var(--navy);
+    margin: 0 0 var(--sp-3); padding: 0; border: 0;
+  }
+  .fd-toc ol { margin: 0; padding-left: 1.35em; columns: 2; column-gap: var(--sp-7); }
+  @media (max-width: 620px) { .fd-toc ol { columns: 1; } .fd-toc { padding: var(--sp-4); } }
+  .fd-toc li { font-size: var(--fs-sm); line-height: 1.6; margin-bottom: var(--sp-1); break-inside: avoid; }
+  .fd-toc a { color: var(--text-secondary); font-weight: 600; text-decoration: none; }
+  .fd-toc a:hover { color: var(--navy); text-decoration: underline; }
+
+  /* A callout for the things people most often get wrong about this site. */
+  .fd-callout {
+    background: var(--surface-2); border: 1px solid var(--border);
+    border-left: 3px solid var(--navy); border-radius: var(--r-sm);
+    padding: var(--sp-4) var(--sp-5); margin: 0 0 var(--sp-5);
+  }
+  .fd-callout p { margin-bottom: var(--sp-3); }
+  .fd-callout p:last-child { margin-bottom: 0; }
+
+  /* Data tables — they scroll inside their own box rather than the page. */
+  .fd-table-wrap { overflow-x: auto; margin: 0 0 var(--sp-5); border: 1px solid var(--border); border-radius: var(--r-md); }
+  table.fd-table { width: 100%; border-collapse: collapse; font-size: var(--fs-sm); min-width: 460px; }
+  table.fd-table th {
+    text-align: left; font-size: var(--fs-2xs); text-transform: uppercase; letter-spacing: 0.06em;
+    color: var(--text-muted); font-weight: 700; padding: 10px var(--sp-4);
+    background: var(--surface-2); border-bottom: 1px solid var(--border); white-space: nowrap;
+  }
+  table.fd-table td {
+    padding: 10px var(--sp-4); border-bottom: 1px solid var(--gridline);
+    color: var(--text-secondary); line-height: 1.6; vertical-align: top;
+  }
+  table.fd-table tr:last-child td { border-bottom: 0; }
+  table.fd-table td:first-child { color: var(--text-primary); font-weight: 600; }
+  /* On a phone a three-column table scrolls sideways in a box whose right-hand
+     half is easy to miss entirely, so each row becomes a labelled block
+     instead. The column headings move into the cells as their own labels. */
+  @media (max-width: 600px) {
+    .fd-table-wrap { overflow-x: visible; }
+    table.fd-table { min-width: 0; }
+    table.fd-table, table.fd-table tbody, table.fd-table tr, table.fd-table td { display: block; width: 100%; }
+    table.fd-table thead { display: none; }
+    table.fd-table tr { border-bottom: 1px solid var(--border); padding: var(--sp-3) 0; }
+    table.fd-table tr:last-child { border-bottom: 0; }
+    table.fd-table td { border-bottom: 0; padding: 2px var(--sp-4); }
+    table.fd-table td[data-label] { padding-top: var(--sp-2); }
+    table.fd-table td[data-label]::before {
+      content: attr(data-label);
+      display: block; margin-bottom: 2px;
+      font-size: var(--fs-2xs); font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.06em; color: var(--text-muted);
+    }
+  }
+
+  /* ---------- Placeholders the owner must fill in ---------- */
+  .fd-ph {
+    background: #fff3cd; color: #6b4e00; border: 1px dashed #a97b00;
+    border-radius: 4px; padding: 0 5px; font-weight: 600; font-style: normal;
+  }
+  .fd-ph-note {
+    background: #fff8e1; border: 1px dashed #a97b00; border-radius: var(--r-md);
+    padding: var(--sp-4) var(--sp-5); margin: 0 0 var(--sp-7); color: #6b4e00;
+  }
+  .fd-ph-note p { font-size: var(--fs-sm); line-height: 1.65; margin: 0; color: #6b4e00; }
+
+  /* ---------- Site footer ---------- */
+  .fd-site-footer {
+    flex: none; border-top: 1px solid var(--navy-line); background: var(--surface-1);
+  }
+  .fd-site-footer-inner {
+    max-width: 960px; margin: 0 auto; padding: var(--sp-6) var(--sp-5) var(--sp-4);
+    display: flex; flex-wrap: wrap; align-items: baseline;
+    justify-content: space-between; gap: var(--sp-3) var(--sp-6);
+  }
+  .fd-footer-links { display: flex; flex-wrap: wrap; gap: var(--sp-2) var(--sp-5); }
+  .fd-footer-links a {
+    font-size: var(--fs-sm); font-weight: 600; color: var(--text-secondary);
+    text-decoration: none; transition: color .15s var(--ease);
+  }
+  .fd-footer-links a:hover { color: var(--navy); text-decoration: underline; }
+  .fd-footer-links a[aria-current="page"] { color: var(--navy); }
+  .fd-footer-copy { font-size: var(--fs-xs); color: var(--text-muted); margin: 0; }
+  .fd-footer-legal {
+    max-width: 960px; margin: 0 auto;
+    padding: 0 var(--sp-5) var(--sp-6);
+    font-size: var(--fs-xs); color: var(--text-muted); line-height: 1.6;
+  }
+  @media (max-width: 460px) {
+    .fd-site-footer-inner { padding: var(--sp-5) var(--sp-4) var(--sp-3); }
+    .fd-footer-legal { padding: 0 var(--sp-4) var(--sp-5); }
+  }
+</style>
+</head>
+<body>
+<div class="fd-root">
+<div class="fd-wrap">
+
+  <div class="fd-nav">
+    <div class="fd-brand"><span class="fd-brand-mark"></span> Financial Diary</div>
+    <div class="fd-nav-actions">
+      <a class="fd-back-link" href="index.html">&larr; Back to Financial Diary</a>
+    </div>
+  </div>
+
+  <h1 class="fd-page-title">Privacy Policy</h1>
+  <p class="fd-page-sub">What Financial Diary collects, why, who else gets to see it, and what you can make us do about it. Written to be read, not to be skimmed past.</p>
+  <p class="fd-updated">Last updated: <span class="fd-ph">[DATE YOU PUBLISH THIS]</span></p>
+
+  <div class="fd-ph-note">
+    <p><strong>Before this goes live:</strong> every highlighted box below is something only you can fill in — your business name, address, contact email and so on. Search the page for a highlighted box, replace the text inside it (and delete the surrounding <code>&lt;span class="fd-ph"&gt;…&lt;/span&gt;</code> tags so the highlight disappears), then delete this note itself along with the <code>.fd-ph-note</code> block in the stylesheet.</p>
+  </div>
+
+  <div class="fd-legal">
+
+    <div class="fd-toc">
+      <h2>On this page</h2>
+      <ol>
+        <li><a href="#who">Who we are</a></li>
+        <li><a href="#short">The short version</a></li>
+        <li><a href="#what">What we collect</a></li>
+        <li><a href="#why">Why we're allowed to</a></li>
+        <li><a href="#cards">Payments and card details</a></li>
+        <li><a href="#others">Who else touches your data</a></li>
+        <li><a href="#fonts">Google Fonts and other loaded files</a></li>
+        <li><a href="#cookies">Cookies and browser storage</a></li>
+        <li><a href="#security">How it's kept safe</a></li>
+        <li><a href="#keep">How long we keep it</a></li>
+        <li><a href="#transfers">Where in the world it goes</a></li>
+        <li><a href="#rights">Your rights</a></li>
+        <li><a href="#children">Children</a></li>
+        <li><a href="#changes">Changes to this policy</a></li>
+        <li><a href="#complain">Complaining</a></li>
+      </ol>
+    </div>
+
+    <h2 id="who">1. Who we are</h2>
+    <p>Financial Diary is run by <span class="fd-ph">[YOUR BUSINESS NAME]</span><span class="fd-ph">[IF A LIMITED COMPANY: , a company registered in England and Wales, number YOUR COMPANY NUMBER — otherwise delete this]</span>, of <span class="fd-ph">[YOUR ADDRESS]</span>.</p>
+    <p>For the purposes of UK data protection law we are the <strong>data controller</strong> for the personal data described here. That means we decide what is collected and why, and we're the ones you hold responsible for it.</p>
+    <p>You can reach us about anything on this page at <span class="fd-ph">[YOUR CONTACT EMAIL]</span>, or through the <a href="contact.html">contact form</a>.</p>
+    <p><span class="fd-ph">[IF YOU ARE REGISTERED WITH THE ICO: Our ICO registration number is YOUR ICO NUMBER — otherwise delete this sentence, and check whether you need to register and pay the data protection fee at ico.org.uk]</span></p>
+
+    <h2 id="short">2. The short version</h2>
+    <div class="fd-callout">
+      <p><strong>We hold your email, your name, and the figures you type in.</strong> That's the substance of it. The figures — your mortgage balance, pension pot, savings, goals — sit in a database where every row is locked to your account.</p>
+      <p><strong>We never see your card.</strong> Payment happens on Stripe's own page. The card number, expiry and security code go to Stripe and never reach this site.</p>
+      <p><strong>There is no analytics, no tracking and no advertising here.</strong> Nothing measures what you click. Nothing follows you to another site. We don't sell or share your data with anyone for marketing, and there is no mailing list.</p>
+      <p><strong>There's no bank connection.</strong> Every figure in your account is one you typed in yourself. Nothing is fetched from your bank, and there's nothing to revoke.</p>
+    </div>
+
+    <h2 id="what">3. What we collect</h2>
+
+    <h3>Things you give us</h3>
+    <div class="fd-table-wrap">
+      <table class="fd-table">
+        <thead>
+          <tr><th>What</th><th>Where it comes from</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Your name and email address</td>
+            <td>The sign-up form. Your email is also your log-in.</td>
+          </tr>
+          <tr>
+            <td>Your password</td>
+            <td>Held by Supabase Auth as a one-way hash. Nobody here can read it or recover it — that's why a forgotten password has to be reset rather than looked up.</td>
+          </tr>
+          <tr>
+            <td>Diary entries</td>
+            <td>Every snapshot you save with the &ldquo;Log this to my diary&rdquo; buttons: the tool it came from, a written summary of the figures, and the date.</td>
+          </tr>
+          <tr>
+            <td>Goals and goal check-ins</td>
+            <td>The name you gave a goal, its target amount and target date, and each check-in value and date you log against it.</td>
+          </tr>
+          <tr>
+            <td>Net worth check-ins</td>
+            <td>What you record on the Tracker tab: property value, mortgage balance, pension pot, investments, cash, your age at the time, the totals worked out from them, and the date.</td>
+          </tr>
+          <tr>
+            <td>Contact messages</td>
+            <td>The name, email address, topic and message you send through the <a href="contact.html">contact form</a>, plus the address of the page you sent it from and — if you were signed in at the time — your account id, so your account can be found quickly.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p>Everything financial in that list is a figure <em>you typed in</em>. Nothing is imported, and the site has no access to any account of yours anywhere else.</p>
+
+    <h3>Things that get recorded automatically</h3>
+    <div class="fd-table-wrap">
+      <table class="fd-table">
+        <thead>
+          <tr><th>What</th><th>Why it exists</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Payment status</td>
+            <td>A true/false flag for whether the £5 has been paid, plus the reference numbers Stripe gives us for your customer record and your checkout session — enough to match a payment to an account, and nothing more.</td>
+          </tr>
+          <tr>
+            <td>Account and record timestamps</td>
+            <td>When your account was created, and when each entry was saved.</td>
+          </tr>
+          <tr>
+            <td>Server logs</td>
+            <td>This site is hosted on Vercel, and like every web host Vercel writes standard request logs. Those include <strong>your IP address</strong>, the page requested, the time, and your browser's user-agent string. They're used for keeping the site up and dealing with abuse, and they expire on Vercel's own schedule.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2 id="why">4. Why we're allowed to — our lawful bases</h2>
+    <p>UK GDPR requires a lawful basis for each use of your data. Ours are:</p>
+    <ul>
+      <li><strong>Performance of a contract</strong> — your account, your figures, your diary and the £5 payment. You asked for a service; this is the data it takes to give it to you.</li>
+      <li><strong>Legitimate interests</strong> — keeping the site running and secure (server logs), and reading and replying to messages you send us. We think you'd expect both; if you disagree, see <a href="#rights">your rights</a>.</li>
+      <li><strong>Legal obligation</strong> — records of the payment itself, which have to be kept for tax and accounting purposes.</li>
+    </ul>
+    <p>We don't rely on consent for any of the above, because there's nothing optional going on: there's no marketing, no profiling and no advertising to consent to.</p>
+
+    <h2 id="cards">5. Payments and card details</h2>
+    <p>The £5 signup payment is taken by <strong>Stripe</strong> on Stripe's own hosted checkout page. When you press the pay button, your browser leaves this site and goes to Stripe.</p>
+    <p>This means your card number, expiry date and security code are typed into Stripe's page, are sent to Stripe, and <strong>never pass through this site's code, servers or database at any point</strong>. There is nothing here to steal: no card number, no partial card number, no expiry date.</p>
+    <p>What comes back to us afterwards is a confirmation that a payment succeeded, tied to a Stripe customer reference and a checkout session reference. Those are what let us mark your account as paid and, later, find your payment if you ask for a refund.</p>
+    <p>Stripe is a <strong>processor</strong> acting on our instructions for that payment, and also a controller in its own right for its fraud-prevention and regulatory obligations. What Stripe does with the data is set out in Stripe's own privacy policy at <a href="https://stripe.com/gb/privacy" rel="noopener noreferrer" target="_blank">stripe.com/gb/privacy</a>.</p>
+
+    <h2 id="others">6. Who else touches your data</h2>
+    <p>We don't sell your data, we don't share it for marketing, and there is no mailing list. The only third parties involved are the ones that make the site work:</p>
+    <div class="fd-table-wrap">
+      <table class="fd-table">
+        <thead>
+          <tr><th>Who</th><th>What they do</th><th>What they see</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Supabase</td>
+            <td data-label="What they do">Database and sign-in.</td>
+            <td data-label="What they see">Everything in your account: name, email, hashed password, your figures, your diary, your messages.</td>
+          </tr>
+          <tr>
+            <td>Stripe</td>
+            <td data-label="What they do">Takes the £5 payment.</td>
+            <td data-label="What they see">Your card details (which we never see), your email, and the payment amount.</td>
+          </tr>
+          <tr>
+            <td>Vercel</td>
+            <td data-label="What they do">Hosts the site.</td>
+            <td data-label="What they see">Standard server logs, including your IP address.</td>
+          </tr>
+          <tr>
+            <td>Google Fonts</td>
+            <td data-label="What they do">Serves the Inter typeface the site is set in.</td>
+            <td data-label="What they see">Your IP address and browser details — see the next section.</td>
+          </tr>
+          <tr>
+            <td>jsDelivr and Cloudflare (cdnjs)</td>
+            <td data-label="What they do">Serve two code libraries the site uses: the Supabase browser client, and the library that builds your PDF report.</td>
+            <td data-label="What they see">Your IP address and browser details, for the same reason as Google Fonts.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2 id="fonts">7. Google Fonts and other loaded files — the bit people leave out</h2>
+    <p>This site is set in a typeface called Inter, which it loads from Google's font servers (<code>fonts.googleapis.com</code> and <code>fonts.gstatic.com</code>). The pages that talk to your account also load the Supabase browser library from jsDelivr, and the dashboard loads the library that builds your PDF report from Cloudflare's cdnjs. (This policy page and the Terms load neither — only the typeface.)</p>
+    <p>Being straight about what that means: <strong>your browser makes a direct request to Google's servers (and to those CDNs) every time you open a page here, and that request carries your IP address</strong>, along with your browser and operating system details and the address of the page you're viewing. We don't ask for that, we don't see it, and we get nothing back from it — but it happens because of a choice we made about how the site is built, so you deserve to know about it.</p>
+    <p>Google's handling of those requests is covered by the <a href="https://policies.google.com/privacy" rel="noopener noreferrer" target="_blank">Google Privacy Policy</a>. Google states that Fonts requests are not used to profile you or serve you adverts, and that it does not set cookies for them — but the IP disclosure is real regardless, and if you'd rather avoid it entirely, a content blocker that stops third-party fonts and scripts will do so. The site is built to stay readable without them.</p>
+
+    <h2 id="cookies">8. Cookies and browser storage</h2>
+    <p>Financial Diary sets <strong>no tracking cookies, no advertising cookies and no analytics of any kind</strong>. Nothing here counts your visits, records what you click, or follows you to other sites. There's no consent banner because there is nothing to consent to.</p>
+    <p>Two things are stored in your own browser, and both stay on your device:</p>
+    <ul>
+      <li><strong>Your sign-in token.</strong> When you log in, the Supabase client library saves your session in your browser's <code>localStorage</code> so you're not thrown out the moment you refresh the page. Signing out removes it. This is strictly necessary for the site to work at all.</li>
+      <li><strong>One preference, <code>fd-howto-open</code>.</strong> It records whether you've collapsed the &ldquo;How this works&rdquo; panel on the dashboard. It holds the word <code>true</code> or <code>false</code> and nothing else. Clearing your browser data resets it; the site works fine without it.</li>
+    </ul>
+    <p>Stripe's own checkout page — which is Stripe's site, not ours — does use cookies, for fraud prevention and to make the payment work. That's covered by Stripe's privacy policy.</p>
+
+    <h2 id="security">9. How it's kept safe</h2>
+    <p>Your data lives in a PostgreSQL database at Supabase with <strong>row-level security</strong> switched on for every table that holds anything of yours. In plain terms: each row is stamped with the account id that created it, and the database itself checks that stamp on every single read and write. A signed-in member asking for someone else's rows doesn't get an error message — they get nothing back, because the database will not hand the rows over in the first place. This is enforced in the database, not in the web page, so it can't be sidestepped by fiddling with the browser.</p>
+    <p>Passwords are stored by Supabase Auth as one-way hashes — they can't be read back, by us or by anyone with access to the database. Traffic to and from the site is encrypted in transit (HTTPS).</p>
+    <p>Messages sent through the <a href="contact.html">contact form</a> are handled slightly differently and deliberately so: anyone can write one, but the site has <em>no</em> permission to read any of them back. The only way to read contact messages is by signing in to the Supabase dashboard as the owner. That way a bug in the website can never turn into a list of everyone's email addresses.</p>
+    <p>No system is perfect, and we won't claim otherwise. If something does go wrong in a way that puts your rights at risk, we'll tell the ICO within 72 hours as the law requires, and we'll tell you if you're likely to be affected.</p>
+
+    <h2 id="keep">10. How long we keep it</h2>
+    <ul>
+      <li><strong>Your account and everything in it</strong> — for as long as you have an account. Ask us to delete it and it goes, along with your diary, goals and check-ins.</li>
+      <li><strong>Contact messages</strong> — kept while they're being dealt with and for a reasonable period afterwards in case you come back about the same thing, then deleted.</li>
+      <li><strong>Payment records</strong> — the record of the £5 transaction is kept for six years after the end of the relevant accounting period, because UK tax law requires it. That record is the transaction, not your financial figures.</li>
+      <li><strong>Server logs</strong> — held by Vercel and expired on Vercel's schedule, which is a matter of weeks rather than years.</li>
+    </ul>
+
+    <h2 id="transfers">11. Where in the world it goes</h2>
+    <p>Supabase, Stripe, Vercel and Google are international companies, and some processing takes place outside the UK — including in the United States. Where that happens, those transfers are covered by the safeguards UK data protection law requires, such as the International Data Transfer Agreement or the UK Addendum to the EU Standard Contractual Clauses, which those providers make available in their data processing terms.</p>
+    <p>This project's Supabase database is hosted in the region <span class="fd-ph">[YOUR SUPABASE REGION — check Supabase → Project Settings → General]</span>.</p>
+
+    <h2 id="rights">12. Your rights</h2>
+    <p>Under UK GDPR you have the following rights over your personal data. All of them are free to use, and we'll respond within one month.</p>
+    <ul>
+      <li><strong>Access</strong> — ask for a copy of what we hold about you.</li>
+      <li><strong>Rectification</strong> — have anything wrong put right. Most of it you can simply correct yourself; your email address is the one we currently have to change for you.</li>
+      <li><strong>Erasure</strong> — ask us to delete your account and everything in it. We'll do it, subject only to the payment record we're legally required to keep. Deletion is permanent: there's no backup copy of your diary to restore afterwards.</li>
+      <li><strong>Portability</strong> — ask for your data in a structured, machine-readable file you can take elsewhere. You can also generate a PDF report of your figures yourself, from the dashboard, at any time.</li>
+      <li><strong>Restriction</strong> — ask us to stop using your data while a dispute about it is sorted out.</li>
+      <li><strong>Objection</strong> — object to any processing we do on the basis of legitimate interests.</li>
+      <li><strong>Rights around automated decision-making</strong> — for completeness: there isn't any. Nothing here makes a decision about you. The tools do arithmetic on figures you typed in and show you the result.</li>
+    </ul>
+    <p>To use any of these, message us through the <a href="contact.html">contact form</a> or email <span class="fd-ph">[YOUR CONTACT EMAIL]</span> from the address on your account. If we can't confirm it's really you, we may have to ask a couple of questions about the account first — that check protects you, not us.</p>
+
+    <h2 id="children">13. Children</h2>
+    <p>Financial Diary is meant for adults planning their own finances, and isn't directed at children. We don't knowingly collect data from anyone under 16. If you think a child has created an account, tell us and we'll delete it.</p>
+
+    <h2 id="changes">14. Changes to this policy</h2>
+    <p>If this policy changes, the updated version appears on this page with a new date at the top. If a change is significant — a new provider handling your data, say, or a new kind of information being collected — we'll email account holders rather than quietly editing the page.</p>
+
+    <h2 id="complain">15. Complaining</h2>
+    <p>If you're unhappy with how your data has been handled, please tell us first through the <a href="contact.html">contact form</a> — most things are a misunderstanding that can be fixed the same day.</p>
+    <p>You also have the right to complain to the UK's data protection regulator, and you don't have to come to us first:</p>
+    <p><strong>Information Commissioner's Office (ICO)</strong><br>
+    Wycliffe House, Water Lane, Wilmslow, Cheshire SK9 5AF<br>
+    Helpline: 0303 123 1113<br>
+    <a href="https://ico.org.uk/make-a-complaint/" rel="noopener noreferrer" target="_blank">ico.org.uk/make-a-complaint</a></p>
+
+  </div>
+
+</div>
+
+<footer class="fd-site-footer">
+  <div class="fd-site-footer-inner">
+    <nav class="fd-footer-links" aria-label="Footer">
+      <a href="contact.html">Contact</a>
+      <a href="privacy.html" aria-current="page">Privacy Policy</a>
+      <a href="terms.html">Terms of Use</a>
+    </nav>
+    <p class="fd-footer-copy">&copy; <span class="fd-footer-year">2026</span> <span class="fd-ph">[YOUR BUSINESS NAME]</span>. All rights reserved.</p>
+  </div>
+  <p class="fd-footer-legal">Financial Diary is a calculator and a record-keeping tool. It isn't financial advice, and projections are estimates based on the figures and growth rates you enter — real returns, rates and circumstances vary.</p>
+</footer>
+</div>
+
+<script>
+(function () {
+  var yearEls = document.querySelectorAll('.fd-footer-year');
+  var year = String(new Date().getFullYear());
+  for (var i = 0; i < yearEls.length; i++) yearEls[i].textContent = year;
+})();
+</script>
+</body>
+</html>
